@@ -25,7 +25,7 @@ typedef struct _Time {
 	unsigned char minute;
 	unsigned char second;
 
-	unsigned int rawTime;
+	unsigned long rawTime;
 } Time;
 
 void Time_init();
