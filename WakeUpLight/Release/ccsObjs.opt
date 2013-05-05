@@ -1,0 +1,1 @@
+"./startup_ccs.obj" "./main.obj" "./lcd44780_LP.obj" -l"libc.a" -l"C:\StellarisWare/driverlib/ccs-cm4f/Release/driverlib-cm4f.lib" "../lm4f120h5qr.cmd" 
