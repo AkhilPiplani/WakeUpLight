@@ -59,6 +59,7 @@
 #define LCD_D7			GPIO_PIN_7
 
 #define LCD_ROW_SIZE	8
+#define LCD_NB_ROWS		2
 
 void LCD_init();
 void LCD_command(unsigned char);
