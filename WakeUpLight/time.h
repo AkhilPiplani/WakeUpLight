@@ -25,12 +25,13 @@ typedef struct _Time {
 	unsigned char minute;
 	unsigned char second;
 
-	unsigned long rawTime;
+	volatile unsigned long rawTime;
 } Time;
 
 void Time_init();
-void Time_set(Time *time);
 void Time_get(Time *time);
+void Time_set(Time *time);
+void Time_setRaw(unsigned long rawTime);
 void Time_printCurrentOnLCD();
 //void Time_setAlarm(Time *time, Day *days);
 
