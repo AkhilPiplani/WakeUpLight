@@ -1,5 +1,5 @@
 /*
- * time.h
+ * Time.h
  *
  *  Created on: 05-May-2013
  *      Author: Akhil

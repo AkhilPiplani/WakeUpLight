@@ -1,5 +1,5 @@
 /*
- * time.c
+ * Time.c
  *
  *  Created on: 05-May-2013
  *      Author: Akhil
@@ -13,8 +13,7 @@
 #include "driverlib/hibernate.h"
 #include "driverlib/rom.h"
 #include "lcd44780_LP.h"
-#include "commons.h"
-#include "time.h"
+#include "Time.h"
 
 #define SECONDS_IN_A_WEEK	604800
 #define SECONDS_IN_A_DAY	86400

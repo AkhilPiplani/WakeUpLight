@@ -16,16 +16,15 @@
 // Several other small modifications
 
 
-#include "inc/hw_ints.h"
-#include "inc/hw_types.h"
-#include "inc/hw_memmap.h"
-#include "driverlib/sysctl.h"
-#include "driverlib/gpio.h"
-#include "driverlib/interrupt.h"
-#include "driverlib/timer.h"
-#include "driverlib/rom.h"
+#include <inc/hw_ints.h>
+#include <inc/hw_types.h>
+#include <inc/hw_memmap.h>
+#include <driverlib/sysctl.h>
+#include <driverlib/gpio.h>
+#include <driverlib/interrupt.h>
+#include <driverlib/timer.h>
+#include <driverlib/rom.h>
 #include "lcd44780_LP.h"
-#include "commons.h"
 
 #if LCD_NB_ROWS==2
 	static unsigned char RowAddresses[LCD_NB_ROWS] = {0x80, 0xC0};
@@ -37,10 +36,10 @@
 
 void LCD_init() {
 	ROM_SysCtlPeripheralEnable(LCD_PORTENABLE);
-	ROM_GPIOPinTypeGPIOOutput(LCD_PORT, 0xFF);
+	ROM_GPIOPinTypeGPIOOutput(LCD_PORT, (LCD_RS | LCD_E | LCD_D4 | LCD_D5 | LCD_D6 | LCD_D7));
 
 	// Please refer to the HLCD_D44780 datasheet for how these initializations work!
-	ROM_SysCtlDelay((500e-3)*ROM_SysCtlClockGet()/3);
+	ROM_SysCtlDelay(ROM_SysCtlClockGet()/3/2);
 
 	ROM_GPIOPinWrite(LCD_PORT, LCD_RS,  0x00);
 
@@ -108,8 +107,8 @@ void LCD_writeText(char* inputText,unsigned char row, unsigned char col) {
 	LCD_command(RowAddresses[row] + col);
 
 	while(*inputText) {
-		currentColumn++;
 		LCD_write(*inputText++);
+		currentColumn++;
 
 		if(currentColumn >= LCD_ROW_SIZE) {
 			currentColumn = 0;
@@ -118,7 +117,6 @@ void LCD_writeText(char* inputText,unsigned char row, unsigned char col) {
 				row = 0;
 			}
 			LCD_command(RowAddresses[row] + col);
-			LCD_write(*inputText++);
 		}
 	}
 }
