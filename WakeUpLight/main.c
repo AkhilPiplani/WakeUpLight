@@ -27,6 +27,7 @@
 // Dimmer Pins: PE1-2
 
 tBoolean ButtonStates[BUTTONS_NB_BUTTONS];
+char LCDprintBuffer[64] = {0};
 
 void ISR_sysTick() {
 	Buttons_poll(ButtonStates);
@@ -40,9 +41,9 @@ int main(void) {
 
     ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
     ROM_SysTickEnable();
-    SysTickIntRegister(ISR_sysTick);
-    ROM_SysTickIntEnable();
-    ROM_IntMasterEnable(); // Enable interrupts
+    //SysTickIntRegister(ISR_sysTick);
+    //ROM_SysTickIntEnable();
+    //ROM_IntMasterEnable(); // Enable interrupts
 
     LCD_init();
     if(Buttons_init(ButtonStates) != 0) {
@@ -53,8 +54,11 @@ int main(void) {
 	Time_set(&time);
 
 	while(1) {
-		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 10);
-		Time_printCurrentOnLCD();
+		//ROM_SysCtlDelay(ROM_SysCtlClockGet() / 1000);
+		//Time_printCurrentOnLCD();
+		Buttons_poll(ButtonStates);
+		sprintf(LCDprintBuffer, "%d%d%d %d%d%d", ButtonStates[0], ButtonStates[1], ButtonStates[2], ButtonStates[3], ButtonStates[4], ButtonStates[5]);
+		LCD_writeText(LCDprintBuffer, 0, 0);
 		//printf("Button States: %d, %d, %d, %d, %d, %d \n", ButtonStates[0], ButtonStates[1], ButtonStates[2], ButtonStates[3], ButtonStates[4], ButtonStates[5]);
 	}
 }

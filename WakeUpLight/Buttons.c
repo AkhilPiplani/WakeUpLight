@@ -32,8 +32,9 @@ int Buttons_init(tBoolean *buttonStates) {
 	// Configure the peripheral and pins
 	ROM_SysCtlPeripheralEnable(BUTTONS_PORTENABLE);
 	ROM_GPIOPinTypeGPIOOutput(BUTTONS_PORT, BUTTONS_ROW_PINS);
+	ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_COLUMN_PINS, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
 	ROM_GPIOPinTypeGPIOInput(BUTTONS_PORT,  BUTTONS_COLUMN_PINS);
-	//ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_COLUMN_PINS, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD); // Use this if the pins don't read correctly
+	ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_COLUMN_PINS, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD); // Use this if the pins don't read correctly
 
 	// Set all the row-pins to high
 	ROM_GPIOPinWrite(BUTTONS_PORT, BUTTONS_ROW_PINS, BUTTONS_ROW_PINS);
@@ -67,6 +68,7 @@ void Buttons_poll(tBoolean *buttonStates) {
 
 
 		columnsState = ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_COLUMN_PINS);
+		LastColumnsState = columnsState;
 		if(columnsState == 0) { // All buttons are in released state.
 			for(i=0; i<BUTTONS_NB_BUTTONS; i++) {
 				buttonStates[i] = false;
@@ -80,7 +82,7 @@ void Buttons_poll(tBoolean *buttonStates) {
 			ROM_GPIOPinWrite(BUTTONS_PORT, BUTTONS_ROW_PINS, (BUTTONS_ROW_PINS & ~(RowPins[i])));
 
 			// TODO: Is there need for this delay to let the pin settle?
-			ROM_SysCtlDelay(10);
+			//ROM_SysCtlDelay(10);
 
 			scanColumnsState = ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_COLUMN_PINS);
 			if(scanColumnsState != columnsState) { // If columns change state when a row is set low, then this was the row whose button was pressed.
