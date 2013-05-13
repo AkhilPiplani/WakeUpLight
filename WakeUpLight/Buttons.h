@@ -11,7 +11,7 @@
 #define BUTTONS_PORT		GPIO_PORTA_BASE
 #define BUTTONS_PORTENABLE	SYSCTL_PERIPH_GPIOA
 
-#define BUTTONS_DEBOUNCE_WAIT	16
+#define BUTTONS_DEBOUNCE_WAIT	2
 
 // Buttons are arranged in a matrix arrangement.
 // All the column pins are set as outputs(default-high) and all the row pins are set as inputs.
