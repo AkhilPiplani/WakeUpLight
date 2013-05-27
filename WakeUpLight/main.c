@@ -18,6 +18,7 @@
 #include "lcd44780_LP.h"
 #include "Time.h"
 #include "Buttons.h"
+#include "lights.h"
 
 // Alarm-Sound
 // PF2(T1CCP0)/PF3(T1CCP1) can be used as 16-bit PWM for Alarm-Sound(PWM). It's in use for the RGB-LED for the Blue/Green channel. Maybe R11/R12 needs to be removed to use it properly.
@@ -25,15 +26,11 @@
 
 // Button Pins: PA2-PA6
 // Dimmer Pins: PE1-2
-
-tBoolean ButtonStates[BUTTONS_NB_BUTTONS];
-char LCDprintBuffer[64] = {0};
-
-void ISR_sysTick() {
-	Buttons_poll(ButtonStates);
-}
+// LCD Pins: PB0,1,4-7
 
 int main(void) {
+	unsigned char brightness = 0;
+	char printBuffer[128] = {0};
 	Time time = {sunday, 23, 59, 45, 0};
 
 	ROM_SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 5 (SYSCTL_SYSDIV_5) = 40MHz
@@ -41,24 +38,35 @@ int main(void) {
 
     ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
     ROM_SysTickEnable();
-    //SysTickIntRegister(ISR_sysTick);
-    //ROM_SysTickIntEnable();
-    //ROM_IntMasterEnable(); // Enable interrupts
 
     LCD_init();
-    if(Buttons_init(ButtonStates) != 0) {
+    /*if(Buttons_init(ButtonStates) != 0) {
     	while(1);
-    }
+    }*/
 
 	Time_init();
 	Time_set(&time);
+	ROM_IntMasterEnable();
+	lights_init();
+	ROM_IntMasterEnable();
+	//lights_printACfrequencyOnLCD();
 
 	while(1) {
+		ROM_SysCtlDelay(ROM_SysCtlClockGet()/16);
+		lights_setBrightness(brightness);
+		brightness++;
+		if(brightness > 100) {
+			brightness = 0;
+		}
+		sprintf(printBuffer, "%d    ", brightness);
+		LCD_writeText(printBuffer, 0, 0);
+
+
 		//ROM_SysCtlDelay(ROM_SysCtlClockGet() / 1000);
 		//Time_printCurrentOnLCD();
-		Buttons_poll(ButtonStates);
-		sprintf(LCDprintBuffer, "%d%d%d %d%d%d", ButtonStates[0], ButtonStates[1], ButtonStates[2], ButtonStates[3], ButtonStates[4], ButtonStates[5]);
-		LCD_writeText(LCDprintBuffer, 0, 0);
-		//printf("Button States: %d, %d, %d, %d, %d, %d \n", ButtonStates[0], ButtonStates[1], ButtonStates[2], ButtonStates[3], ButtonStates[4], ButtonStates[5]);
+
+		//Buttons_poll(ButtonStates);
+		//sprintf(printBuffer, "%d%d%d %d%d%d", ButtonStates[0], ButtonStates[1], ButtonStates[2], ButtonStates[3], ButtonStates[4], ButtonStates[5]);
+		//LCD_writeText(printBuffer, 0, 0);
 	}
 }

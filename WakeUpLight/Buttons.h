@@ -8,6 +8,8 @@
 #ifndef BUTTONS_H_
 #define BUTTONS_H_
 
+#include <inc/hw_types.h>
+
 #define BUTTONS_PORT		GPIO_PORTA_BASE
 #define BUTTONS_PORTENABLE	SYSCTL_PERIPH_GPIOA
 
