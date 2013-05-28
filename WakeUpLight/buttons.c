@@ -1,5 +1,5 @@
 /*
- * Buttons.c
+ * buttons.c
  *
  *  Created on: 09-May-2013
  *      Author: Akhil
@@ -15,14 +15,14 @@
 #include <driverlib/interrupt.h>
 #include <driverlib/timer.h>
 #include <driverlib/rom.h>
-#include "Buttons.h"
+#include "buttons.h"
 
 static unsigned int DebouncingCount = 0;
 static unsigned long LastColumnsState = 0;
 
 static const unsigned long RowPins[3] = {BUTTONS_PIN1, BUTTONS_PIN2, BUTTONS_PIN3};
 
-int Buttons_init(tBoolean *buttonStates) {
+int buttons_init(tBoolean *buttonStates) {
 	unsigned int i;
 
 	if(buttonStates == NULL) {
@@ -49,7 +49,7 @@ int Buttons_init(tBoolean *buttonStates) {
 	return 0;
 }
 
-void Buttons_poll(tBoolean *buttonStates) {
+void buttons_poll(tBoolean *buttonStates) {
 	unsigned int i;
 	unsigned long columnsState, scanColumnsState, columnOffset = 0;
 

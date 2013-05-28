@@ -114,13 +114,13 @@ void lights_printACfrequencyOnLCD() {
 	char printString[64] = {0};
 
 	ZeroCrossingCount = 0;
-	Time_get(&lastTime);
+	time_get(&lastTime);
 
 	while(1) {
-		Time_get(&time);
+		time_get(&time);
 		if(time.second != lastTime.second) {
 			sprintf(printString, "%u %u   ", ZeroCrossingCount, time.second);
-			LCD_writeText(printString, 0, 0);
+			lcd_writeText(printString, 0, 0);
 			lastTime = time;
 			ZeroCrossingCount = 0;
 		}

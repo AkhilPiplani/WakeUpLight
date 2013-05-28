@@ -16,8 +16,8 @@
 #include <driverlib/rom.h>
 //#include <utils/uartstdio.h>
 #include "lcd44780_LP.h"
-#include "Time.h"
-#include "Buttons.h"
+#include "time.h"
+#include "buttons.h"
 #include "lights.h"
 
 // Alarm-Sound
@@ -39,13 +39,13 @@ int main(void) {
     ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
     ROM_SysTickEnable();
 
-    LCD_init();
-    /*if(Buttons_init(ButtonStates) != 0) {
+    lcd_init();
+    /*if(buttons_init(ButtonStates) != 0) {
     	while(1);
     }*/
 
-	Time_init();
-	Time_set(&time);
+	time_init();
+	time_set(&time);
 	ROM_IntMasterEnable();
 	lights_init();
 	ROM_IntMasterEnable();
@@ -59,13 +59,13 @@ int main(void) {
 		}
 
 		sprintf(printString, "%u   ", brightness);
-		LCD_writeText(printString, 0, 0);
+		lcd_writeText(printString, 0, 0);
 
 		//ROM_SysCtlDelay(ROM_SysCtlClockGet() / 1000);
-		//Time_printCurrentOnLCD();
+		//time_printCurrentOnLCD();
 
-		//Buttons_poll(ButtonStates);
+		//buttons_poll(ButtonStates);
 		//sprintf(printBuffer, "%d%d%d %d%d%d", ButtonStates[0], ButtonStates[1], ButtonStates[2], ButtonStates[3], ButtonStates[4], ButtonStates[5]);
-		//LCD_writeText(printBuffer, 0, 0);
+		//lcd_writeText(printBuffer, 0, 0);
 	}
 }

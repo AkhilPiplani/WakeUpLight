@@ -1,5 +1,5 @@
 /*
- * Time.h
+ * time.h
  *
  *  Created on: 05-May-2013
  *      Author: Akhil
@@ -28,11 +28,11 @@ typedef struct _Time {
 	volatile unsigned long rawTime;
 } Time;
 
-void Time_init();
-void Time_get(Time *time);
-void Time_set(Time *time);
-void Time_setRaw(unsigned long rawTime);
-void Time_printCurrentOnLCD();
-//void Time_setAlarm(Time *time, Day *days);
+void time_init();
+void time_get(Time *time);
+void time_set(Time *time);
+void time_setRaw(unsigned long rawtime);
+void time_printCurrentOnLCD();
+//void time_setAlarm(Time *time, Day *days);
 
 #endif /* TIME_H_ */

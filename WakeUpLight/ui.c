@@ -15,9 +15,9 @@
 #include <inc/hw_ints.h>
 #include <inc/hw_types.h>
 #include "lcd44780_LP.h"
-#include "Buttons.h"
+#include "buttons.h"
 #include "lights.h"
-#include "Time.h"
+#include "time.h"
 #include "ui.h"
 
 typedef enum _UIstates {
@@ -41,8 +41,8 @@ char *MainMenuStrings[] = {"Time", "Alarm"};
 tBoolean ButtonStates[BUTTONS_NB_BUTTONS];
 
 void ui_init() {
-	LCD_init();
-    if(Buttons_init(ButtonStates) != 0) {
+	lcd_init();
+    if(buttons_init(ButtonStates) != 0) {
     	while(1);
     }
 
@@ -50,7 +50,7 @@ void ui_init() {
 }
 
 void ui_run() {
-	Buttons_poll(ButtonStates);
+	buttons_poll(ButtonStates);
 
 	switch(UIstate) {
 	case time_uistate:
@@ -63,7 +63,7 @@ void ui_run() {
 			return;
 		}
 		else {
-			Time_printCurrentOnLCD();
+			time_printCurrentOnLCD();
 			break;
 		}
 
@@ -79,7 +79,7 @@ void ui_run() {
 			MainMenuState = time_menustate;
 			break;
 		}
-		LCD_writeText(MainMenuStrings[MainMenuState], 0, 1); // Does this blank previous characters I'm not overwriting?
+		lcd_writeText(MainMenuStrings[MainMenuState], 0, 1); // Does this blank previous characters I'm not overwriting?
 		break;
 
 	case timeSet_uistate:
@@ -95,5 +95,5 @@ void ui_run() {
 		break;
 	}
 
-	Buttons_poll(ButtonStates);
+	buttons_poll(ButtonStates);
 }

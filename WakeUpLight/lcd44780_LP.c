@@ -34,7 +34,7 @@
 	#error "Unexpected LCD_NB_ROWS, please modify RowAddresses in lcd44780_LP.c"
 #endif
 
-void LCD_init() {
+void lcd_init() {
 	ROM_SysCtlPeripheralEnable(LCD_PORTENABLE);
 	ROM_GPIOPinTypeGPIOOutput(LCD_PORT, (LCD_RS | LCD_E | LCD_D4 | LCD_D5 | LCD_D6 | LCD_D7));
 
@@ -63,12 +63,12 @@ void LCD_init() {
 
 	ROM_SysCtlDelay((10e-3)*ROM_SysCtlClockGet()/3);
 
-	LCD_command(LCD_CLEARDISPLAY);	// Clear the screen.
-	LCD_command(0x06);	// Cursor moves right.
-	LCD_command(LCD_DISPLAYCONTROL | LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF);	// Don't show any cursor, turn on LCD.
+	lcd_command(LCD_CLEARDISPLAY);	// Clear the screen.
+	lcd_command(0x06);	// Cursor moves right.
+	lcd_command(LCD_DISPLAYCONTROL | LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF);	// Don't show any cursor, turn on LCD.
 }
 
-void LCD_command(unsigned char command) {
+void lcd_command(unsigned char command) {
 	ROM_GPIOPinWrite(LCD_PORT, LCD_D4 | LCD_D5 | LCD_D6 | LCD_D7, (command & 0xf0) );
 	ROM_GPIOPinWrite(LCD_PORT, LCD_RS, 0x00);
 	ROM_GPIOPinWrite(LCD_PORT, LCD_E, 0x02);ROM_SysCtlDelay((20e-6)*ROM_SysCtlClockGet()/3); ROM_GPIOPinWrite(LCD_PORT, LCD_E, 0x00);
@@ -82,7 +82,7 @@ void LCD_command(unsigned char command) {
 	ROM_SysCtlDelay((5e-3)*ROM_SysCtlClockGet()/3);
 }
 
-void LCD_write(unsigned char inputData) {
+void lcd_write(unsigned char inputData) {
 	ROM_GPIOPinWrite(LCD_PORT, LCD_D4 | LCD_D5 | LCD_D6 | LCD_D7, (inputData & 0xf0) );
 	ROM_GPIOPinWrite(LCD_PORT, LCD_RS, 0x01);
 	ROM_GPIOPinWrite(LCD_PORT, LCD_E, 0x02);
@@ -98,16 +98,16 @@ void LCD_write(unsigned char inputData) {
 	ROM_SysCtlDelay((5e-3)*ROM_SysCtlClockGet()/3);
 }
 
-void LCD_writeText(char* inputText,unsigned char row, unsigned char col) {
+void lcd_writeText(char* inputText,unsigned char row, unsigned char col) {
 	unsigned int currentColumn = col;
 
 	if(row >= LCD_NB_ROWS) {
 		row = 0;
 	}
-	LCD_command(RowAddresses[row] + col);
+	lcd_command(RowAddresses[row] + col);
 
 	while(*inputText) {
-		LCD_write(*inputText++);
+		lcd_write(*inputText++);
 		currentColumn++;
 
 		if(currentColumn >= LCD_ROW_SIZE) {
@@ -116,12 +116,12 @@ void LCD_writeText(char* inputText,unsigned char row, unsigned char col) {
 			if(row >= LCD_NB_ROWS) {
 				row = 0;
 			}
-			LCD_command(RowAddresses[row] + col);
+			lcd_command(RowAddresses[row] + col);
 		}
 	}
 }
 
-void LCD_BuildCustomCharacters() {
+void lcd_BuildCustomCharacters() {
 	unsigned char pattern1[8] ={0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1f};
 	unsigned char pattern2[8] ={0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1f, 0x1f};
 	unsigned char pattern3[8] ={0x0, 0x0, 0x0, 0x0, 0x0, 0x1f, 0x01f, 0x1f};
@@ -131,40 +131,40 @@ void LCD_BuildCustomCharacters() {
 	unsigned char pattern7[8] ={0x0, 0x0, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
 	unsigned char pattern8[8] ={0x0, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
 
-	LCD_build(0, pattern1);
-	LCD_build(1, pattern2);
-	LCD_build(2, pattern3);
-	LCD_build(3, pattern4);
-	LCD_build(4, pattern5);
-	LCD_build(5, pattern6);
-	LCD_build(6, pattern7);
-	LCD_build(7, pattern8);
+	lcd_build(0, pattern1);
+	lcd_build(1, pattern2);
+	lcd_build(2, pattern3);
+	lcd_build(3, pattern4);
+	lcd_build(4, pattern5);
+	lcd_build(5, pattern6);
+	lcd_build(6, pattern7);
+	lcd_build(7, pattern8);
 }
 
-void LCD_build(unsigned char location, unsigned char *ptr) {
+void lcd_build(unsigned char location, unsigned char *ptr) {
 	unsigned char i;
 	if(location<8){
-		LCD_command(0x40 + (location*8));
+		lcd_command(0x40 + (location*8));
 		for(i=0;i<8;i++)
-			LCD_write(ptr[i]);
-		LCD_command(0x80);
+			lcd_write(ptr[i]);
+		lcd_command(0x80);
 	}
 
 }
 
-void LCD_writePos(unsigned char inputData, unsigned char row, unsigned char col) {
+void lcd_writePos(unsigned char inputData, unsigned char row, unsigned char col) {
 	if(row >= LCD_NB_ROWS) {
 		row = 0;
 	}
-	LCD_command(RowAddresses[row] + col);
+	lcd_command(RowAddresses[row] + col);
 
-	LCD_write(inputData);
+	lcd_write(inputData);
 }
 
-void LCD_scrollLeft() {
-	LCD_command(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVELEFT);
+void lcd_scrollLeft() {
+	lcd_command(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVELEFT);
 }
 
-void LCD_scrollRight() {
-	LCD_command(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVERIGHT);
+void lcd_scrollRight() {
+	lcd_command(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVERIGHT);
 }

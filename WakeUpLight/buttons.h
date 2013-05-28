@@ -1,5 +1,5 @@
 /*
- * Buttons.h
+ * buttons.h
  *
  *  Created on: 09-May-2013
  *      Author: Akhil
@@ -41,7 +41,7 @@ typedef enum _Buttons {
 	enter_button = 5
 } Buttons;
 
-int Buttons_init(tBoolean *buttonStates);
-void Buttons_poll(tBoolean *buttonStates);
+int buttons_init(tBoolean *buttonStates);
+void buttons_poll(tBoolean *buttonStates);
 
 #endif /* BUTTONS_H_ */

@@ -61,15 +61,15 @@
 #define LCD_ROW_SIZE	8
 #define LCD_NB_ROWS		2
 
-void LCD_init();
-void LCD_command(unsigned char);
-void LCD_write(unsigned char);
-void LCD_writeText(char*,unsigned char, unsigned char);
-void LCD_writePos(unsigned char,unsigned char, unsigned char );
-void LCD_scrollLeft();
-void LCD_scrollRight();
-void LCD_build(unsigned char location, unsigned char *ptr);
-void LCD_BuildCustomCharacters();
-void LCD_writeData(unsigned char inputData);
+void lcd_init();
+void lcd_command(unsigned char);
+void lcd_write(unsigned char);
+void lcd_writeText(char*,unsigned char, unsigned char);
+void lcd_writePos(unsigned char,unsigned char, unsigned char );
+void lcd_scrollLeft();
+void lcd_scrollRight();
+void lcd_build(unsigned char location, unsigned char *ptr);
+void lcd_BuildCustomCharacters();
+void lcd_writeData(unsigned char inputData);
 
 #endif /* LCD44780_LP_H_ */

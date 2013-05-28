@@ -1,5 +1,5 @@
 /*
- * Time.c
+ * time.c
  *
  *  Created on: 05-May-2013
  *      Author: Akhil
@@ -13,7 +13,7 @@
 #include "driverlib/hibernate.h"
 #include "driverlib/rom.h"
 #include "lcd44780_LP.h"
-#include "Time.h"
+#include "time.h"
 
 #define SECONDS_IN_A_WEEK	604800
 #define SECONDS_IN_A_DAY	86400
@@ -21,13 +21,13 @@
 // Day number close to the time when the RTC will reach 0xFFFFFFFF and roll over to zero.
 // Although this will happen in ~136 years, it's fun to account for that too.
 // If this RTC lives 136 years, it won't get a Y2K bug.
-// When Time_get is called on that day, it will account for this bug.
+// When time_get is called on that day, it will account for this bug.
 #define ROLLOVER_DAY		49710
 
 static char CurrentTimeString[64] = {0};
 static Time CurrentTime =  {0}, LastTime = {0};
 
-void Time_init() {
+void time_init() {
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_HIBERNATE);
 	ROM_HibernateEnableExpClk(ROM_SysCtlClockGet());
 	ROM_HibernateClockSelect(HIBERNATE_CLOCK_SEL_RAW);
@@ -35,12 +35,12 @@ void Time_init() {
 	ROM_HibernateRTCEnable();
 }
 
-void Time_set(Time *time) {
+void time_set(Time *time) {
 	time->rawTime = time->second + 60*time->minute + 3600*time->hour + SECONDS_IN_A_DAY*time->day;
-	Time_setRaw(time->rawTime);
+	time_setRaw(time->rawTime);
 }
 
-void Time_setRaw(unsigned long rawTime) {
+void time_setRaw(unsigned long rawTime) {
 	volatile unsigned long setTime;
 	do {
 		ROM_HibernateRTCSet(rawTime);
@@ -48,7 +48,7 @@ void Time_setRaw(unsigned long rawTime) {
 	} while(setTime - rawTime > 3);
 }
 
-void Time_get(Time *time) {
+void time_get(Time *time) {
 	volatile unsigned long oldRawTime = ROM_HibernateRTCGet();
 	volatile unsigned long rawTime = ROM_HibernateRTCGet();
 
@@ -72,7 +72,7 @@ void Time_get(Time *time) {
 
 	if(rawTime >= ROLLOVER_DAY) {
 		rawTime = ROM_HibernateRTCGet();
-		Time_setRaw(rawTime % SECONDS_IN_A_WEEK);
+		time_setRaw(rawTime % SECONDS_IN_A_WEEK);
 	}
 }
 
@@ -123,12 +123,12 @@ static void buildCurrentTimeString() {
 	}
 }
 
-void Time_printCurrentOnLCD() {
-	Time_get(&CurrentTime);
+void time_printCurrentOnLCD() {
+	time_get(&CurrentTime);
 
 	if(CurrentTime.rawTime != LastTime.rawTime) {
 		buildCurrentTimeString();
-		LCD_writeText(CurrentTimeString, 0, 0);
+		lcd_writeText(CurrentTimeString, 0, 0);
 		LastTime.rawTime = CurrentTime.rawTime;
 	}
 }
