@@ -24,12 +24,10 @@
 
 // This whole module generally assumes a 50Hz AC input.
 
-#define LIGHTS_AC_HALF_CYCLE_TIME (SysCtlClockGet()/100) // -20 cycles to account for miscellaneous delays.
-
 static unsigned int ZeroCrossingCount;
 static tBoolean DimmerPinState = false;
 static unsigned long DimmerTriggerDelay;
-
+static unsigned long AChalfCycleTime;
 
 void ISR_lights(void) {
 	// Not using ROM_ functions here because they are slower.
@@ -38,15 +36,20 @@ void ISR_lights(void) {
 
 	GPIOPinWrite(LIGHTS_PORT, LIGHTS_DIMMER_OUT, 0);
 
-	// Only set the timer if the brightness is not 0 percent.
-	if(DimmerTriggerDelay < LIGHTS_AC_HALF_CYCLE_TIME) {
+	if(DimmerTriggerDelay < 20) {
+		// If the delay is very low, simply set the dimmer output pin here instead of using the timer
+		GPIOPinWrite(LIGHTS_PORT, LIGHTS_DIMMER_OUT, LIGHTS_DIMMER_OUT);
+	}
+	else if(DimmerTriggerDelay < AChalfCycleTime) {
+		// Only set the timer if the brightness is not 0 percent.
+		GPIOPinWrite(LIGHTS_PORT, LIGHTS_DIMMER_OUT, 0);
 		TimerLoadSet(LIGHTS_TIMER, TIMER_A, DimmerTriggerDelay);
 		TimerEnable(LIGHTS_TIMER, TIMER_A);
 	}
 }
 
 void ISR_lightsTimer(void) {
-	unsigned long highTime = LIGHTS_AC_HALF_CYCLE_TIME - DimmerTriggerDelay;//SysCtlClockGet()/200;//SysCtlClockGet()/2000;
+	unsigned long highTime;
 
 	// Not using ROM_ functions here because they are slower.
 	TimerIntClear(LIGHTS_TIMER, TIMER_TIMA_TIMEOUT);  // Clear the interrupt at timer
@@ -54,15 +57,13 @@ void ISR_lightsTimer(void) {
 
 	if(DimmerPinState == false) {
 		// Set the dimmer out pin and set another timer to clear it.
+		// This makes sure the dimmer trigger is switched off irrespective of whether ISR_lights is triggered or not.
+		highTime = AChalfCycleTime - DimmerTriggerDelay;
+		if(highTime > 35) {
+			highTime -= 20;
+		}
+
 		DimmerPinState = true;
-//		if(highTime > (LIGHTS_AC_HALF_CYCLE_TIME - 20 - DimmerTriggerDelay)) {  // -20 cycles to account for miscellaneous delays.
-//			// Not sure if the timer will trigger if we use 0 as highTime.
-//			highTime = 4;
-//		}
-//		else {
-//			// Don't pull the trigger if there isn't enough time left in the AC half-cycle
-//			GPIOPinWrite(LIGHTS_PORT, LIGHTS_DIMMER_OUT, LIGHTS_DIMMER_OUT);
-//		}
 
 		GPIOPinWrite(LIGHTS_PORT, LIGHTS_DIMMER_OUT, LIGHTS_DIMMER_OUT);
 
@@ -78,8 +79,9 @@ void ISR_lightsTimer(void) {
 }
 
 void lights_init() {
-	DimmerTriggerDelay = LIGHTS_AC_HALF_CYCLE_TIME;
 	ZeroCrossingCount = 0;
+	AChalfCycleTime = (ROM_SysCtlClockGet()/100);
+	DimmerTriggerDelay = AChalfCycleTime;
 
 	ROM_SysCtlPeripheralEnable(LIGHTS_TIMERENABLE);
 	ROM_TimerDisable(LIGHTS_TIMER, TIMER_A);
@@ -91,22 +93,20 @@ void lights_init() {
 	ROM_GPIOPinTypeGPIOOutput(LIGHTS_PORT, LIGHTS_DIMMER_OUT);
 	ROM_GPIOPadConfigSet(LIGHTS_PORT, LIGHTS_DIMMER_OUT, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
 	ROM_GPIOPinTypeGPIOInput(LIGHTS_PORT, LIGHTS_0CROSSING_IN);
-	ROM_GPIOIntTypeSet(LIGHTS_PORT, LIGHTS_0CROSSING_IN, GPIO_FALLING_EDGE);
+	ROM_GPIOIntTypeSet(LIGHTS_PORT, LIGHTS_0CROSSING_IN, GPIO_RISING_EDGE);
 	ROM_GPIOPinIntDisable(LIGHTS_PORT, 0xFF);
 	ROM_GPIOPinIntEnable(LIGHTS_PORT, LIGHTS_0CROSSING_IN);
 	ROM_IntEnable(LIGHTS_0CROSSING_INTERRUPT);
 
 }
-
+char printBuffer[64] = {0};
 void lights_setBrightness(unsigned char percent) {
-	unsigned long delay  = LIGHTS_AC_HALF_CYCLE_TIME - LIGHTS_AC_HALF_CYCLE_TIME * (unsigned long)percent / 100;
-
-	// Not sure if the timer will trigger if we use 0 as delay.
-	// Input validation: if percent>100 delay is negative and will overflow into a very large value.
-	if(delay<4 || percent>100) {
-		delay = 4;
+	// Input validation.
+	if(percent > 100) {
+		percent = 100;
 	}
-	DimmerTriggerDelay = delay;
+
+	DimmerTriggerDelay = AChalfCycleTime - AChalfCycleTime * (unsigned long)percent / 100;
 }
 
 void lights_printACfrequencyOnLCD() {

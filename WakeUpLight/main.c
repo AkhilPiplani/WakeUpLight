@@ -30,7 +30,7 @@
 
 int main(void) {
 	unsigned char brightness = 0;
-	char printBuffer[128] = {0};
+	char printString[128] = {0};
 	Time time = {sunday, 23, 59, 45, 0};
 
 	ROM_SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 5 (SYSCTL_SYSDIV_5) = 40MHz
@@ -50,7 +50,6 @@ int main(void) {
 	lights_init();
 	ROM_IntMasterEnable();
 	//lights_printACfrequencyOnLCD();
-
 	while(1) {
 		ROM_SysCtlDelay(ROM_SysCtlClockGet()/16);
 		lights_setBrightness(brightness);
@@ -58,9 +57,9 @@ int main(void) {
 		if(brightness > 100) {
 			brightness = 0;
 		}
-		sprintf(printBuffer, "%d    ", brightness);
-		LCD_writeText(printBuffer, 0, 0);
 
+		sprintf(printString, "%u   ", brightness);
+		LCD_writeText(printString, 0, 0);
 
 		//ROM_SysCtlDelay(ROM_SysCtlClockGet() / 1000);
 		//Time_printCurrentOnLCD();
