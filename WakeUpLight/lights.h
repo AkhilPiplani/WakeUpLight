@@ -22,8 +22,12 @@
 #define LIGHTS_0CROSSING_INTERRUPT	INT_GPIOE
 #define LIGHTS_TIMER_INTERRUPT		INT_TIMER0A
 
+#define LIGHTS_MAX_BRIGHTNESS		(ROM_SysCtlClockGet()/100)
+
+extern unsigned long lights_MaxBrightness;
+
 void lights_init();
-void lights_setBrightness(unsigned char percent);
+void lights_setBrightness(unsigned long brightness);
 void lights_printACfrequencyOnLCD();
 
 #endif /* LIGHTS_H_ */

@@ -6,12 +6,13 @@
  */
 
 #include <stdio.h>
-#include "inc/hw_types.h"
-#include "inc/hw_memmap.h"
-#include "inc/hw_hibernate.h"
-#include "driverlib/sysctl.h"
-#include "driverlib/hibernate.h"
-#include "driverlib/rom.h"
+#include <string.h>
+#include <inc/hw_types.h>
+#include <inc/hw_memmap.h>
+#include <inc/hw_hibernate.h>
+#include <driverlib/sysctl.h>
+#include <driverlib/hibernate.h>
+#include <driverlib/rom.h>
 #include "lcd44780_LP.h"
 #include "time.h"
 
@@ -24,10 +25,19 @@
 // When time_get is called on that day, it will account for this bug.
 #define ROLLOVER_DAY		49710
 
-static char CurrentTimeString[64] = {0};
-static Time CurrentTime =  {0}, LastTime = {0};
+#define MAX_NUMBER_OF_ALARMS	7
+
+static Time AlarmTimes[MAX_NUMBER_OF_ALARMS] = {{0}};
+static unsigned int NumberOfAlarms = 0;
+static tBoolean AlarmAcknowledged[MAX_NUMBER_OF_ALARMS];
 
 void time_init() {
+	unsigned int i;
+
+	for(i=0; i<sizeof(AlarmAcknowledged); i++) {
+		AlarmAcknowledged[i] = true;
+	}
+
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_HIBERNATE);
 	ROM_HibernateEnableExpClk(ROM_SysCtlClockGet());
 	ROM_HibernateClockSelect(HIBERNATE_CLOCK_SEL_RAW);
@@ -84,39 +94,39 @@ static void uCharToSting(unsigned char num, char *strEnd) {
 	}
 }
 
-static void buildCurrentTimeString() {
+static void buildTimeString(Time *time, char *timeString) {
 	char blankTimeString[] = "   0:00:00,    ";
-	memcpy(CurrentTimeString, blankTimeString, sizeof(blankTimeString));
+	memcpy(timeString, blankTimeString, sizeof(blankTimeString));
 
-	uCharToSting(CurrentTime.hour, CurrentTimeString+3);
-	uCharToSting(CurrentTime.minute, CurrentTimeString+6);
-	uCharToSting(CurrentTime.second, CurrentTimeString+9);
+	uCharToSting(time->hour, timeString+3);
+	uCharToSting(time->minute, timeString+6);
+	uCharToSting(time->second, timeString+9);
 
-	switch(CurrentTime.day) {
+	switch(time->day) {
 	case monday:
-		CurrentTimeString[12] = 'M';
+		timeString[12] = 'M';
 		break;
 	case tuesday:
-		CurrentTimeString[12] = 'T';
-		CurrentTimeString[13] = 'u';
+		timeString[12] = 'T';
+		timeString[13] = 'u';
 		break;
 	case wednesday:
-		CurrentTimeString[12] = 'W';
+		timeString[12] = 'W';
 		break;
 	case thursday:
-		CurrentTimeString[12] = 'T';
-		CurrentTimeString[13] = 'h';
+		timeString[12] = 'T';
+		timeString[13] = 'h';
 		break;
 	case friday:
-		CurrentTimeString[12] = 'F';
+		timeString[12] = 'F';
 		break;
 	case saturday:
-		CurrentTimeString[12] = 'S';
-		CurrentTimeString[13] = 'a';
+		timeString[12] = 'S';
+		timeString[13] = 'a';
 		break;
 	case sunday:
-		CurrentTimeString[12] = 'S';
-		CurrentTimeString[13] = 'u';
+		timeString[12] = 'S';
+		timeString[13] = 'u';
 		break;
 	default:
 		break;
@@ -124,11 +134,57 @@ static void buildCurrentTimeString() {
 }
 
 void time_printCurrentOnLCD() {
-	time_get(&CurrentTime);
+	static Time currentTime = {0}, lastTime = {0};
+	static char currentTimeString[64] = {0};
 
-	if(CurrentTime.rawTime != LastTime.rawTime) {
-		buildCurrentTimeString();
-		lcd_writeText(CurrentTimeString, 0, 0);
-		LastTime.rawTime = CurrentTime.rawTime;
+	time_get(&currentTime);
+
+	if(currentTime.rawTime != lastTime.rawTime) {
+		buildTimeString(&currentTime, currentTimeString);
+		lcd_writeText(currentTimeString, 0, 0);
+		lastTime.rawTime = currentTime.rawTime;
+	}
+}
+
+int time_setAlarms(Time *time, unsigned int numberOfAlarms) {
+	unsigned int i;
+
+	if(time==NULL || numberOfAlarms>MAX_NUMBER_OF_ALARMS) {
+		return -1;
+	}
+
+	memcpy(AlarmTimes, time, numberOfAlarms*sizeof(Time));
+	for(i=0; i<numberOfAlarms; i++) {
+		if(AlarmTimes[i].rawTime == 0) {
+			AlarmTimes[i].rawTime = AlarmTimes[i].second + 60*AlarmTimes[i].minute + 3600*AlarmTimes[i].hour + SECONDS_IN_A_DAY*AlarmTimes[i].day;
+		}
+	}
+
+	NumberOfAlarms = numberOfAlarms;
+
+	return 0;
+}
+
+tBoolean time_checkAlarm() {
+	static Time currentTime = {0};
+	unsigned int i;
+
+	time_get(&currentTime);
+
+	for(i=0; i<NumberOfAlarms; i++) {
+		if((AlarmTimes[i].rawTime - currentTime.rawTime < 11) && AlarmAcknowledged[i]==true) {
+			AlarmAcknowledged[i] = false;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void time_acknowledgeAlarm() {
+	unsigned int i;
+
+	for(i=0; i<NumberOfAlarms; i++) {
+		AlarmAcknowledged[i] = true;
 	}
 }

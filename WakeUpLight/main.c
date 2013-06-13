@@ -29,12 +29,11 @@
 // LCD Pins: PB0,1,4-7
 
 int main(void) {
-	unsigned char brightness = 0;
+	unsigned long brightness = 0;
 	char printString[128] = {0};
 	Time time = {sunday, 23, 59, 45, 0};
 
 	ROM_SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 5 (SYSCTL_SYSDIV_5) = 40MHz
-
 
     ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
     ROM_SysTickEnable();
@@ -51,15 +50,15 @@ int main(void) {
 	ROM_IntMasterEnable();
 	//lights_printACfrequencyOnLCD();
 	while(1) {
-		ROM_SysCtlDelay(ROM_SysCtlClockGet()/16);
+		ROM_SysCtlDelay(ROM_SysCtlClockGet()/64);
 		lights_setBrightness(brightness);
-		brightness++;
-		if(brightness > 100) {
+		brightness += 600;
+		if(brightness > lights_MaxBrightness+2000) {
 			brightness = 0;
 		}
 
-		sprintf(printString, "%u   ", brightness);
-		lcd_writeText(printString, 0, 0);
+		//sprintf(printString, "%u   ", brightness);
+		//lcd_writeText(printString, 0, 0);
 
 		//ROM_SysCtlDelay(ROM_SysCtlClockGet() / 1000);
 		//time_printCurrentOnLCD();

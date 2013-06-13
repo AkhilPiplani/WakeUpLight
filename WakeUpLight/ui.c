@@ -25,7 +25,8 @@ typedef enum _UIstates {
 	menu_uistate = 1,
 	timeSet_uistate = 2,
 	alarmSet_uistate = 3,
-	lights_uistate = 4
+	lights_uistate = 4,
+	alarm_uistate = 5
 } UIstates;
 
 UIstates UIstate = time_uistate;
@@ -36,7 +37,7 @@ typedef enum _MenuStates {
 } MenuStates;
 MenuStates MainMenuState = time_menustate;
 
-char *MainMenuStrings[] = {"Time", "Alarm"};
+char *MainMenuStrings[] = {"Time            ", "Alarm           "};
 
 tBoolean ButtonStates[BUTTONS_NB_BUTTONS];
 
@@ -50,7 +51,19 @@ void ui_init() {
 }
 
 void ui_run() {
+	static unsigned long lightsBrigtness = 0;
+	static Time currentTime;
+	static Time alarms[7];
+	static Time snoozeAlarm;
+	static tBoolean snoozeSet = false;
+
 	buttons_poll(ButtonStates);
+
+	if(time_checkAlarm() == true) {
+		UIstate = alarm_uistate;
+		snoozeSet = false;
+		lightsBrigtness = 0;
+	}
 
 	switch(UIstate) {
 	case time_uistate:
@@ -79,7 +92,7 @@ void ui_run() {
 			MainMenuState = time_menustate;
 			break;
 		}
-		lcd_writeText(MainMenuStrings[MainMenuState], 0, 1); // Does this blank previous characters I'm not overwriting?
+		lcd_writeText(MainMenuStrings[MainMenuState], 0, 1);
 		break;
 
 	case timeSet_uistate:
@@ -90,6 +103,33 @@ void ui_run() {
 
 	case lights_uistate:
 		break;
+
+	case alarm_uistate:
+		if(lightsBrigtness < lights_MaxBrightness) {
+			lightsBrigtness++;
+			lights_setBrightness(lightsBrigtness);
+		}
+
+		if(snoozeSet == true) {
+			time_get(&currentTime);
+			if(snoozeAlarm.rawTime - currentTime.rawTime < 11) {
+				snoozeSet = false;
+				// Should start playing alarm sound again when that's implemented.
+			}
+		}
+
+		if(ButtonStates[enter_button] != 0) {
+			// Should stop playing alarm sound here when that's implemented but has no effect on lights.
+			time_acknowledgeAlarm();
+			time_get(&snoozeAlarm);
+			snoozeAlarm.rawTime += 10*60; // Snooze for 10 minutes.
+			snoozeSet = true;
+		}
+		if(ButtonStates[reset_button] != 0) {
+			lights_setBrightness(0);
+			time_acknowledgeAlarm();
+			UIstate = time_uistate;
+		}
 
 	default:
 		break;

@@ -8,6 +8,8 @@
 #ifndef TIME_H_
 #define TIME_H_
 
+#include <inc/hw_types.h>
+
 typedef enum _Day {
 	monday = 0,
 	tuesday = 1,
@@ -33,6 +35,8 @@ void time_get(Time *time);
 void time_set(Time *time);
 void time_setRaw(unsigned long rawtime);
 void time_printCurrentOnLCD();
-//void time_setAlarm(Time *time, Day *days);
+int time_setAlarms(Time *time, unsigned int size); // Size = number of Time array elements, max 7
+tBoolean time_checkAlarm();
+void time_acknowledgeAlarm();
 
 #endif /* TIME_H_ */
