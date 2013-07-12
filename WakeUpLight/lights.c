@@ -78,7 +78,7 @@ void lights_init() {
 	ROM_IntEnable(LIGHTS_0CROSSING_INTERRUPT);
 
 }
-char printBuffer[64] = {0};
+
 void lights_setBrightness(unsigned long brightness) {
 	if(brightness > lights_MaxBrightness) {
 		brightness = lights_MaxBrightness;

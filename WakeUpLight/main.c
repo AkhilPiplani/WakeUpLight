@@ -11,26 +11,37 @@
 #include <inc/hw_ints.h>
 #include <inc/hw_types.h>
 #include <inc/hw_memmap.h>
+#include <driverlib/pin_map.h>
 #include <driverlib/sysctl.h>
 #include <driverlib/systick.h>
 #include <driverlib/rom.h>
-//#include <utils/uartstdio.h>
+#include <driverlib/uart.h>
+#include <driverlib/gpio.h>
+#include <utils/uartstdio.h>
 #include "lcd44780_LP.h"
 #include "time.h"
 #include "buttons.h"
+#include "uartBt.h"
 #include "lights.h"
 
 // Alarm-Sound
 // PF2(T1CCP0)/PF3(T1CCP1) can be used as 16-bit PWM for Alarm-Sound(PWM). It's in use for the RGB-LED for the Blue/Green channel. Maybe R11/R12 needs to be removed to use it properly.
-// PD7 (WT5CCP1) or PD2 (WT3CCP0) can also be used as 32-bit timer PWM.
+// PD2 (WT3CCP0) can also be used as 32-bit timer PWM.
 
 // Button Pins: PA2-PA6
 // Dimmer Pins: PE1-2
 // LCD Pins: PB0,1,4-7
+// UART(2) Pins: PD6-7 (PD6=U2Rx, PD7=U2Tx) -- used for uart to bluetooth converter
+
+// Enable only one of the below
+#define AC_FREQUENCY_TEST	0
+#define LIGHTS_TEST			0
+#define BUTTONS_TEST		0
+#define UARTBLUETOOTH_TEST	1
 
 int main(void) {
 	unsigned long brightness = 0;
-	char printString[128] = {0};
+	char stringBuffer[128] = {0};
 	Time time = {sunday, 23, 59, 45, 0};
 
 	ROM_SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 5 (SYSCTL_SYSDIV_5) = 40MHz
@@ -39,17 +50,21 @@ int main(void) {
     ROM_SysTickEnable();
 
     lcd_init();
-    /*if(buttons_init(ButtonStates) != 0) {
-    	while(1);
-    }*/
+    buttons_init();
+    uartBt_init();
 
 	time_init();
 	time_set(&time);
-	ROM_IntMasterEnable();
 	lights_init();
+
 	ROM_IntMasterEnable();
-	//lights_printACfrequencyOnLCD();
+
+#if AC_FREQUENCY_TEST
+	lights_printACfrequencyOnLCD();
+#endif
+
 	while(1) {
+#if LIGHTS_TEST
 		ROM_SysCtlDelay(ROM_SysCtlClockGet()/64);
 		lights_setBrightness(brightness);
 		brightness += 600;
@@ -57,14 +72,19 @@ int main(void) {
 			brightness = 0;
 		}
 
-		//sprintf(printString, "%u   ", brightness);
-		//lcd_writeText(printString, 0, 0);
-
-		//ROM_SysCtlDelay(ROM_SysCtlClockGet() / 1000);
-		//time_printCurrentOnLCD();
-
-		//buttons_poll(ButtonStates);
-		//sprintf(printBuffer, "%d%d%d %d%d%d", ButtonStates[0], ButtonStates[1], ButtonStates[2], ButtonStates[3], ButtonStates[4], ButtonStates[5]);
-		//lcd_writeText(printBuffer, 0, 0);
+		sprintf(stringBuffer, "%u   ", brightness);
+		lcd_writeText(stringBuffer, 0, 0);
+#elif UARTBLUETOOTH_TEST
+		brightness++;
+		sprintf(stringBuffer, "%u   \n\r", brightness);
+		uartBt_send((unsigned char *)stringBuffer, (unsigned long)strlen(stringBuffer));
+#elif BUTTONS_TEST
+		buttons_poll();
+		sprintf(stringBuffer, "%d%d%d %d%d%d", Buttons_States[0], Buttons_States[1], Buttons_States[2], Buttons_States[3], Buttons_States[4], Buttons_States[5]);
+		lcd_writeText(stringBuffer, 0, 0);
+#else
+		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 1000);
+		time_printCurrentOnLCD();
+#endif
 	}
 }

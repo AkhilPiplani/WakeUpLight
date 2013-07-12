@@ -12,6 +12,7 @@
 
 #define BUTTONS_PORT		GPIO_PORTA_BASE
 #define BUTTONS_PORTENABLE	SYSCTL_PERIPH_GPIOA
+//#define BUTTONS_INTERRUPT	INT_GPIOA
 
 #define BUTTONS_DEBOUNCE_WAIT	2
 
@@ -41,7 +42,9 @@ typedef enum _Buttons {
 	enter_button = 5
 } Buttons;
 
-int buttons_init(tBoolean *buttonStates);
-void buttons_poll(tBoolean *buttonStates);
+extern tBoolean ButtonsStates[BUTTONS_NB_BUTTONS];
+
+void buttons_init();
+void buttons_poll();
 
 #endif /* BUTTONS_H_ */

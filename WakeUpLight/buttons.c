@@ -22,40 +22,32 @@ static unsigned long LastColumnsState = 0;
 
 static const unsigned long RowPins[3] = {BUTTONS_PIN1, BUTTONS_PIN2, BUTTONS_PIN3};
 
-int buttons_init(tBoolean *buttonStates) {
+tBoolean ButtonsStates[BUTTONS_NB_BUTTONS];
+
+void buttons_init() {
 	unsigned int i;
 
-	if(buttonStates == NULL) {
-		return -1;
+	for(i=0; i<BUTTONS_NB_BUTTONS; i++) {
+		ButtonsStates[i] = false;
 	}
+
+	DebouncingCount = 0;
+	LastColumnsState = 0;
 
 	// Configure the peripheral and pins
 	ROM_SysCtlPeripheralEnable(BUTTONS_PORTENABLE);
 	ROM_GPIOPinTypeGPIOOutput(BUTTONS_PORT, BUTTONS_ROW_PINS);
-	ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_COLUMN_PINS, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
+	ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_COLUMN_PINS, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
 	ROM_GPIOPinTypeGPIOInput(BUTTONS_PORT,  BUTTONS_COLUMN_PINS);
 	//ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_COLUMN_PINS, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD); // Use this if the pins don't read correctly
 
 	// Set all the row-pins to high
 	ROM_GPIOPinWrite(BUTTONS_PORT, BUTTONS_ROW_PINS, BUTTONS_ROW_PINS);
-
-	DebouncingCount = 0;
-	LastColumnsState = 0;
-
-	for(i=0; i<BUTTONS_NB_BUTTONS; i++) {
-		buttonStates[i] = false;
-	}
-
-	return 0;
 }
 
-void buttons_poll(tBoolean *buttonStates) {
+void buttons_poll() {
 	unsigned int i;
 	unsigned long columnsState, scanColumnsState, columnOffset = 0;
-
-	if(buttonStates == NULL) {
-		return;
-	}
 
 	// Continue debouncing
 	if(DebouncingCount>0 && DebouncingCount<=BUTTONS_DEBOUNCE_WAIT) {
@@ -71,7 +63,7 @@ void buttons_poll(tBoolean *buttonStates) {
 		LastColumnsState = columnsState;
 		if(columnsState == 0) { // All buttons are in released state.
 			for(i=0; i<BUTTONS_NB_BUTTONS; i++) {
-				buttonStates[i] = false;
+				ButtonsStates[i] = false;
 			}
 			return;
 		}
@@ -89,7 +81,7 @@ void buttons_poll(tBoolean *buttonStates) {
 				if(columnsState & BUTTONS_PIN5) {
 					columnOffset = 3;
 				}
-				buttonStates[columnOffset + i] = true;
+				ButtonsStates[columnOffset + i] = true;
 				break;
 			}
 		}

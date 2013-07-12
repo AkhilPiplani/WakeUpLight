@@ -39,15 +39,11 @@ MenuStates MainMenuState = time_menustate;
 
 char *MainMenuStrings[] = {"Time            ", "Alarm           "};
 
-tBoolean ButtonStates[BUTTONS_NB_BUTTONS];
-
 void ui_init() {
 	lcd_init();
-    if(buttons_init(ButtonStates) != 0) {
-    	while(1);
-    }
+	buttons_init();
 
-    ui_run();
+	ui_run();
 }
 
 void ui_run() {
@@ -57,7 +53,7 @@ void ui_run() {
 	static Time snoozeAlarm;
 	static tBoolean snoozeSet = false;
 
-	buttons_poll(ButtonStates);
+	buttons_poll();
 
 	if(time_checkAlarm() == true) {
 		UIstate = alarm_uistate;
@@ -67,11 +63,11 @@ void ui_run() {
 
 	switch(UIstate) {
 	case time_uistate:
-		if(ButtonStates[enter_button] != 0) {
+		if(ButtonsStates[enter_button] != 0) {
 			UIstate = lights_uistate;
 			return;
 		}
-		else if(ButtonStates[right_button]!=0 || ButtonStates[left_button]!=0) {
+		else if(ButtonsStates[right_button]!=0 || ButtonsStates[left_button]!=0) {
 			UIstate = menu_uistate;
 			return;
 		}
@@ -81,13 +77,13 @@ void ui_run() {
 		}
 
 	case menu_uistate:
-		if(ButtonStates[right_button] != 0) {
+		if(ButtonsStates[right_button] != 0) {
 			MainMenuState = alarm_menustate;
 		}
-		else if(ButtonStates[left_button] != 0) {
+		else if(ButtonsStates[left_button] != 0) {
 			MainMenuState = time_menustate;
 		}
-		else if(ButtonStates[enter_button] != 0) {
+		else if(ButtonsStates[enter_button] != 0) {
 			UIstate = timeSet_uistate + MainMenuState;
 			MainMenuState = time_menustate;
 			break;
@@ -118,14 +114,14 @@ void ui_run() {
 			}
 		}
 
-		if(ButtonStates[enter_button] != 0) {
+		if(ButtonsStates[enter_button] != 0) {
 			// Should stop playing alarm sound here when that's implemented but has no effect on lights.
 			time_acknowledgeAlarm();
 			time_get(&snoozeAlarm);
 			snoozeAlarm.rawTime += 10*60; // Snooze for 10 minutes.
 			snoozeSet = true;
 		}
-		if(ButtonStates[reset_button] != 0) {
+		if(ButtonsStates[reset_button] != 0) {
 			lights_setBrightness(0);
 			time_acknowledgeAlarm();
 			UIstate = time_uistate;
@@ -135,5 +131,5 @@ void ui_run() {
 		break;
 	}
 
-	buttons_poll(ButtonStates);
+	buttons_poll();
 }
