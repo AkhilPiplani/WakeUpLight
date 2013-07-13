@@ -145,5 +145,5 @@ void uartBt_oneTimeSetup() {
 	sendCommandToBC05(setPassword);
 	sendCommandToBC05(getPassword);
 
-	//sendCommandToBC05(setBaud); // You should change your baudrate in the code after this.
+	sendCommandToBC05(setBaud); // You should change your baudrate in the code after this.
 }
