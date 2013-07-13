@@ -89,7 +89,7 @@ void uartBt_init() {
 	ROM_GPIOPinTypeUART(UARTBT_PORT, UARTBT_PIN_RX | UARTBT_PIN_TX);
 
 	// Configure the UART for 9600, 8-N-1 operation.
-	ROM_UARTConfigSetExpClk(UARTBT_BASE, ROM_SysCtlClockGet(), 9600, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
+	ROM_UARTConfigSetExpClk(UARTBT_BASE, ROM_SysCtlClockGet(), 115200, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
 	ROM_UARTFIFODisable(UARTBT_BASE); // FIFO disabled so that short commands come through immediately
 //	ROM_UARTFIFOEnable(UARTBT_BASE);
 //	ROM_UARTFIFOLevelSet(UARTBT_BASE, UART_FIFO_TX4_8, UART_FIFO_RX4_8);
@@ -118,4 +118,32 @@ unsigned long uartBt_receive(unsigned char *data) {
 	else {
 		return 0;
 	}
+}
+
+static void sendCommandToBC05(char *command) {
+	uartBt_send((unsigned char*)command, (unsigned long)strlen(command));
+}
+
+void uartBt_oneTimeSetup() {
+	// Requires BC-05 to be in AT mode by setting the key pin high.
+	char getVersion[] = "at+version?\r\n";
+	char getName[] = "AT+NAME?";
+	char setName[] = "AT+NAME=WakeUp Light\r\n";
+	char getPassword[] = "AT+PSWD?\r\n";
+	char setPassword[] = "AT+PSWD=SleepWell\r\n"; // Think again if you think this is my real password. It's not a bad one though.
+	char setBaud[] = "AT+UART=115200,0,0\r\n";
+
+	sendCommandToBC05(getVersion);
+
+	sendCommandToBC05(getName);
+	sendCommandToBC05(setName);
+	sendCommandToBC05(setName); // For some reason, the datasheet's examples do this twice too. Just to be sure I guess.
+	sendCommandToBC05(getName);
+
+	sendCommandToBC05(getPassword);
+	sendCommandToBC05(setPassword);
+	sendCommandToBC05(setPassword);
+	sendCommandToBC05(getPassword);
+
+	//sendCommandToBC05(setBaud); // You should change your baudrate in the code after this.
 }

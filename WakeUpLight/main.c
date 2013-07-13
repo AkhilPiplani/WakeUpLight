@@ -91,8 +91,8 @@ int main(void) {
 		// This test needs Rx and Tx pins to be shorted.
 		rxSize = uartBt_receive((unsigned char*)stringBuffer);
 		if(rxSize != 0) {
-			uartBt_send((unsigned char *)stringBuffer, (unsigned long)strlen(stringBuffer));
-			uartBt_send((unsigned char *)"\r\n", 2);
+			uartBt_send((unsigned char*)stringBuffer, (unsigned long)strlen(stringBuffer));
+			uartBt_send((unsigned char*)"\r\n", 2);
 			memset(stringBuffer, 0, rxSize);
 		}
 #elif BUTTONS_TEST

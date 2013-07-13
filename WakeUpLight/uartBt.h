@@ -27,4 +27,6 @@ void uartBt_init();
 void uartBt_send(unsigned char *data, unsigned long size);
 unsigned long uartBt_receive(unsigned char *data);
 
+void uartBt_oneTimeSetup();
+
 #endif /* UARTBT_H_ */
