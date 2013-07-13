@@ -5,9 +5,11 @@
  *      Author: Akhil
  */
 #include <stddef.h>
+#include <string.h>
 #include <inc/hw_ints.h>
 #include <inc/hw_types.h>
 #include <inc/hw_memmap.h>
+#include <inc/hw_gpio.h>
 #include <driverlib/pin_map.h>
 #include <driverlib/sysctl.h>
 #include <driverlib/systick.h>
@@ -15,6 +17,7 @@
 #include <driverlib/uart.h>
 #include <driverlib/gpio.h>
 #include <driverlib/rom.h>
+#include <driverlib/interrupt.h>
 #include "uartBt.h"
 
 #define UARTBT_BUFFER_SIZE	32
@@ -37,12 +40,11 @@ void ISR_uartBt(void) {
 	while(UARTCharsAvail(UARTBT_BASE)) {
 		// Read the next character from the UART and write it back to the UART.
 		byte = UARTCharGetNonBlocking(UARTBT_BASE);
-		UARTCharPutNonBlocking(UARTBT_BASE, byte); // Comment me later
 
 		commandSize = CurrentCommandByte - CurrentCommandStartPointer;
 
-		if(byte == '\r' || commandSize==UARTBT_BUFFER_SIZE) { // \r is used to indicate end-of-command
-			if(*CurrentCommandByte == '\n') {
+		if(byte == '\n' || commandSize==UARTBT_BUFFER_SIZE) { // \r is used to indicate end-of-command
+			if((CurrentCommandByte>CommandBuffer || CurrentCommandByte>(CommandBuffer + UARTBT_BUFFER_SIZE)) && *(CurrentCommandByte-1)=='\r') {
 				LastCommandSize = commandSize - 1;
 			}
 			else {
@@ -64,47 +66,56 @@ void ISR_uartBt(void) {
 			}
 		}
 		else {
+			*CurrentCommandByte = byte;
 			CurrentCommandByte++;
 		}
 
-		// Delay for 1 millisecond.  Each SysCtlDelay is about 3 clocks.
-		SysCtlDelay(SysCtlClockGet() / (1000 * 3)); // Comment me later
 	}
 }
 
 void uartBt_init() {
-	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
-	ROM_GPIOPinConfigure(UARTBT_PINMAP_RX);
+	ROM_SysCtlPeripheralEnable(UARTBT_PORTENABLE);
+	ROM_SysCtlPeripheralEnable(UARTBT_PERIPHENABLE);
+
+	if(UARTBT_PORT == GPIO_PORTD_BASE) {
+		// Enable port PD7 for UART2-TX by opening the lock and selecting the bits we want to modify in the GPIO commit register.
+		HWREG(UARTBT_PORT + GPIO_O_LOCK) = GPIO_LOCK_KEY_DD;
+		HWREG(UARTBT_PORT + GPIO_O_CR) = 0x80;
+	}
+
 	ROM_GPIOPinConfigure(UARTBT_PINMAP_TX);
+	ROM_GPIOPinConfigure(UARTBT_PINMAP_RX);
+
 	ROM_GPIOPinTypeUART(UARTBT_PORT, UARTBT_PIN_RX | UARTBT_PIN_TX);
 
 	// Configure the UART for 9600, 8-N-1 operation.
 	ROM_UARTConfigSetExpClk(UARTBT_BASE, ROM_SysCtlClockGet(), 9600, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
-	ROM_UARTIntEnable(UARTBT_BASE, UART_INT_RX | UART_INT_RT);
+	ROM_UARTFIFODisable(UARTBT_BASE); // FIFO disabled so that short commands come through immediately
+//	ROM_UARTFIFOEnable(UARTBT_BASE);
+//	ROM_UARTFIFOLevelSet(UARTBT_BASE, UART_FIFO_TX4_8, UART_FIFO_RX4_8);
+	ROM_IntEnable(UARTBT_INTERRUPT);
+	ROM_UARTIntEnable(UARTBT_BASE, UART_INT_RX);
 }
 
 void uartBt_send(unsigned char *data, unsigned long size) {
 	while(size--) {
-		ROM_UARTCharPutNonBlocking(UARTBT_BASE, *data++);
+		ROM_UARTCharPut(UARTBT_BASE, *data++);
 	}
 }
 
-tBoolean uartBt_receive(volatile unsigned char **data, unsigned long *size) {
+unsigned long uartBt_receive(unsigned char *data) {
 	if(NewCommandArrived == true) {
-		*size = LastCommandSize;
-
 		if(CurrentCommandStartPointer == CommandBuffer) {
-			*data = CommandBuffer + UARTBT_BUFFER_SIZE;
+			memcpy(data, (const void*)(CommandBuffer + UARTBT_BUFFER_SIZE), LastCommandSize);
 		}
 		else {
-			*data = CommandBuffer;
+			memcpy(data, (const void*)CommandBuffer, LastCommandSize);
 		}
 
 		NewCommandArrived = false;
-		return true;
+		return LastCommandSize;
 	}
 	else {
-		*size = 0;
-		return false;
+		return 0;
 	}
 }

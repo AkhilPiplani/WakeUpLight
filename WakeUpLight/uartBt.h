@@ -12,6 +12,9 @@
 #include <driverlib/pin_map.h>
 
 #define UARTBT_BASE			UART2_BASE
+#define UARTBT_PORTENABLE	SYSCTL_PERIPH_GPIOD
+#define UARTBT_PERIPHENABLE	SYSCTL_PERIPH_UART2
+#define UARTBT_INTERRUPT	INT_UART2
 #define UARTBT_PORT			GPIO_PORTD_BASE
 
 #define UARTBT_PINMAP_RX	GPIO_PD6_U2RX
@@ -22,6 +25,6 @@
 
 void uartBt_init();
 void uartBt_send(unsigned char *data, unsigned long size);
-tBoolean uartBt_receive(volatile unsigned char **data, unsigned long *size);
+unsigned long uartBt_receive(unsigned char *data);
 
 #endif /* UARTBT_H_ */
