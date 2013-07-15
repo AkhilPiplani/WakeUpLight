@@ -126,7 +126,7 @@ static void sendCommandToBC05(char *command) {
 
 void uartBt_oneTimeSetup() {
 	// Requires BC-05 to be in AT mode by setting the key pin high.
-	char getVersion[] = "at+version?\r\n";
+	char getVersion[] = "AT+VERSION?\r\n";
 	char getName[] = "AT+NAME?";
 	char setName[] = "AT+NAME=WakeUp Light\r\n";
 	char getPassword[] = "AT+PSWD?\r\n";
