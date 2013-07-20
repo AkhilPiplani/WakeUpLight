@@ -5,10 +5,6 @@
  *      Author: Akhil
  */
 
-
-// Need to use one timer in PWM mode and another to cause interrupts at the sample-rate
-// This will remove the need to do math
-
 #include <stddef.h>
 #include <stdio.h>
 #include <inc/hw_ints.h>
