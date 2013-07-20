@@ -16,10 +16,13 @@
 * No. of samples:	19758
 * Bits/Sample:		8
 **********************************************************************/
+// SampleRate: 8000
 
-#define NUM_ELEMENTS 19758
+#define ALARM_SOUND_ELEMENTS 		19758
+#define ALARM_SOUND_SAMPLE_RATE		8000
+#define ALARM_SOUND_BITDEPTH		8
 
-unsigned char AlarmSound[NUM_ELEMENTS] = {
+unsigned char AlarmSound[ALARM_SOUND_ELEMENTS] = {
 128, 128, 128, 128, 128, 128, 128, 128, // 0-7
 128, 128, 128, 128, 128, 128, 128, 128, // 8-15
 128, 128, 128, 128, 128, 128, 128, 128, // 16-23
