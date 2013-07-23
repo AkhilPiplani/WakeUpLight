@@ -34,6 +34,7 @@ void alarm_init() {
 	// Set-up PWM
 	ROM_GPIOPinConfigure(ALARM_PINMAP_PWM);
 	ROM_GPIOPinTypeTimer(ALARM_PWM_PORT, ALARM_PWM_PIN);
+	ROM_GPIOPadConfigSet(ALARM_PWM_PORT, ALARM_PWM_PIN, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
 
 	ROM_TimerDisable(ALARM_PWM_TIMER, TIMER_A);
 	ROM_TimerConfigure(ALARM_PWM_TIMER, TIMER_CFG_SPLIT_PAIR | TIMER_CFG_A_PWM);
@@ -62,11 +63,12 @@ void alarm_stop() {
 	ROM_GPIOPinTypeGPIOOutput(ALARM_PWM_PORT, ALARM_PWM_PIN);
 	ROM_GPIOPinTypeGPIOOutput(ALARM_PWM_PORT, ALARM_PWM_PIN);
 	ROM_GPIOPinWrite(ALARM_PWM_PORT, ALARM_PWM_PIN, 0);
+
+	AlarmSoundIndex = 0;
 }
 
-// TODO: Write the ISR that loads the next sample value from the array, checks if the alarm-stop-flag is set and stops playing things and also resets index-etc
-// TODO: configure the ISR in startup_ccs.c file
 void ISR_alarmSamples(void) {
+	TimerIntClear(ALARM_SAMPLERATE_TIMER, TIMER_TIMA_TIMEOUT);
 	TimerMatchSet(ALARM_PWM_TIMER, TIMER_A, AlarmSound[AlarmSoundIndex++]);
 	if(AlarmSoundIndex == ALARM_SOUND_ELEMENTS) {
 		AlarmSoundIndex = 0;

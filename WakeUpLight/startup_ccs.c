@@ -55,6 +55,7 @@ extern unsigned long __STACK_TOP;
 extern void ISR_lights(void);
 extern void ISR_lightsTimer(void);
 extern void ISR_uartBt(void);
+extern void ISR_alarmSamples(void);
 
 //*****************************************************************************
 //
@@ -106,7 +107,7 @@ void (* const g_pfnVectors[])(void) =
     IntDefaultHandler,                      // Timer 0 subtimer B
     IntDefaultHandler,                      // Timer 1 subtimer A
     IntDefaultHandler,                      // Timer 1 subtimer B
-    IntDefaultHandler,                      // Timer 2 subtimer A
+    ISR_alarmSamples,                       // Timer 2 subtimer A
     IntDefaultHandler,                      // Timer 2 subtimer B
     IntDefaultHandler,                      // Analog Comparator 0
     IntDefaultHandler,                      // Analog Comparator 1
