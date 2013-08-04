@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <inc/hw_ints.h>
 #include <inc/hw_types.h>
@@ -17,7 +18,6 @@
 #include <driverlib/rom.h>
 #include <driverlib/uart.h>
 #include <driverlib/gpio.h>
-#include <utils/uartstdio.h>
 #include "lcd44780_LP.h"
 #include "time.h"
 #include "buttons.h"
@@ -44,6 +44,16 @@
 #define UARTBT_ECHO_TEST		0
 #define ALARM_TEST				1
 
+void uartDebug_init() {
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    ROM_GPIOPinConfigure(GPIO_PA0_U0RX);
+    ROM_GPIOPinConfigure(GPIO_PA1_U0TX);
+    ROM_GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+    ROM_UARTConfigSetExpClk(UART0_BASE, ROM_SysCtlClockGet(), 115200, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
+
+}
+
 int main(void) {
 	unsigned long brightness = 0, rxSize = 0;
 	char stringBuffer[128] = {0};
@@ -57,15 +67,14 @@ int main(void) {
     ROM_SysTickEnable();
     ROM_IntMasterEnable();
 
+    uartDebug_init(); // Used for printf.
+    uartBt_init(); // Used for bluetooth communication with Android App.
     lcd_init();
     buttons_init();
-    uartBt_init();
-
 	time_init();
 	time_set(&time);
 	lights_init();
 	ROM_IntMasterEnable();
-
 
 #if AC_FREQUENCY_TEST
 	lights_printACfrequencyOnLCD();

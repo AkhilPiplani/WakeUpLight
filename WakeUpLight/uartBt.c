@@ -93,6 +93,7 @@ void uartBt_init() {
 	ROM_UARTFIFODisable(UARTBT_BASE); // FIFO disabled so that short commands come through immediately
 //	ROM_UARTFIFOEnable(UARTBT_BASE);
 //	ROM_UARTFIFOLevelSet(UARTBT_BASE, UART_FIFO_TX4_8, UART_FIFO_RX4_8);
+	UARTIntRegister(UARTBT_BASE, ISR_uartBt);
 	ROM_IntEnable(UARTBT_INTERRUPT);
 	ROM_UARTIntEnable(UARTBT_BASE, UART_INT_RX);
 }

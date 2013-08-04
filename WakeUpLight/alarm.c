@@ -21,6 +21,8 @@
 #include "alarmSound.h"
 #include "alarm.h"
 
+void ISR_alarmSamples(void);
+
 volatile unsigned int AlarmSoundIndex = 0;
 
 void alarm_init() {
@@ -46,6 +48,7 @@ void alarm_init() {
 	ROM_TimerDisable(ALARM_SAMPLERATE_TIMER, TIMER_A);
 	ROM_TimerConfigure(ALARM_SAMPLERATE_TIMER, TIMER_CFG_32_BIT_PER);
 	ROM_TimerLoadSet(ALARM_SAMPLERATE_TIMER, TIMER_A, ROM_SysCtlClockGet() / ALARM_SOUND_SAMPLE_RATE);
+	TimerIntRegister(ALARM_SAMPLERATE_TIMER, TIMER_A, ISR_alarmSamples);
 	ROM_IntEnable(ALARM_SAMPLERATE_TIMER_INTERRUPT);
 	ROM_TimerIntEnable(ALARM_SAMPLERATE_TIMER, TIMER_TIMA_TIMEOUT);
 	ROM_TimerEnable(ALARM_SAMPLERATE_TIMER, TIMER_A);

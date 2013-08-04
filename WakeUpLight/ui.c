@@ -126,7 +126,7 @@ void ui_run() {
 			time_acknowledgeAlarm();
 			UIstate = time_uistate;
 		}
-
+		break;
 	default:
 		break;
 	}
