@@ -44,7 +44,7 @@
 #define BUTTONS_TEST			0
 #define UARTBT_LOOPBACK_TEST	0
 #define UARTBT_ECHO_TEST		0
-#define ALARM_TEST				1
+#define SOUND_TEST				1
 
 static void uartDebug_init() {
     ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
@@ -61,7 +61,9 @@ static void performTests() {
 	char stringBuffer[128] = {0};
 	char helloBluetooth[] = "hello bluetooth! \r\n";
 	char hi[] = "hoi";
-	Time time = {sunday, 23, 59, 45, 0};
+	Time testTime = {sunday, 23, 59, 45, 0};
+
+	time_set(&testTime);
 
 #if AC_FREQUENCY_TEST
 	lights_printACfrequencyOnLCD();
@@ -76,7 +78,7 @@ static void performTests() {
 			brightness = 0;
 		}
 
-		sprintf(stringBuffer, "%u   ", brightness);
+		sprintf(stringBuffer, "%lu   ", brightness);
 		lcd_writeText(stringBuffer, 0, 0);
 #elif UARTBT_LOOPBACK_TEST
 		// This test needs Rx and Tx pins to be shorted.
@@ -99,11 +101,11 @@ static void performTests() {
 		buttons_poll();
 		sprintf(stringBuffer, "%d%d%d %d%d%d", Buttons_States[0], Buttons_States[1], Buttons_States[2], Buttons_States[3], Buttons_States[4], Buttons_States[5]);
 		lcd_writeText(stringBuffer, 0, 0);
-#elif ALARM_TEST
-		alarm_init();
+#elif SOUND_TEST
+		sound_init();
 		while(1);
 		ROM_SysCtlDelay(ROM_SysCtlClockGet()); // Each SysCtlDelay is about 3 clocks.
-		alarm_stop();
+		sound_stop();
 		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 2);
 #else
 		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 100);
@@ -126,13 +128,13 @@ static void initSystem() {
     lcd_init();
     buttons_init();
 	time_init();
-	time_set(&time);
 	lights_init();
 	ROM_IntMasterEnable();
 }
 
 int main(void) {
 	unsigned char command[UARTBT_MAX_COMMAND_SIZE] = {0};
+
 	initSystem();
 
 #if ENABLE_TESTS
@@ -151,10 +153,14 @@ int main(void) {
 			break;
 		case 'L': // Lights
 			break;
-		case 'z': // snoozzzzze Alarm
+		case 'z': // Snoozzzzze Alarm
 			break;
 		case 'U': // I'm Up! Stop Alarm
+			break;
+		default:
+			break;
 		}
 	}
 
+	return 0;
 }
