@@ -20,7 +20,7 @@
 #include <driverlib/interrupt.h>
 #include "uartBt.h"
 
-#define UARTBT_BUFFER_SIZE	32
+#define UARTBT_BUFFER_SIZE	UARTBT_MAX_COMMAND_SIZE
 
 static volatile unsigned char CommandBuffer[UARTBT_BUFFER_SIZE*2] = {0}; // Double buffer for holding commands
 static volatile unsigned char *CurrentCommandStartPointer = CommandBuffer;

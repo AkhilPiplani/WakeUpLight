@@ -18,12 +18,13 @@
 #include <driverlib/rom.h>
 #include <driverlib/uart.h>
 #include <driverlib/gpio.h>
+#include <driverlib/fpu.h>
 #include "lcd44780_LP.h"
 #include "time.h"
 #include "buttons.h"
 #include "uartBt.h"
 #include "lights.h"
-#include "alarm.h"
+#include "sound.h"
 
 // Alarm-Sound
 // PF2(T1CCP0)/PF3(T1CCP1) can be used as 16-bit PWM for Alarm-Sound(PWM). It's in use for the RGB-LED for the Blue/Green channel. Maybe R11/R12 needs to be removed to use it properly.
@@ -36,6 +37,7 @@
 // UART(2) Pins: PD6-7 (PD6=U2Rx, PD7=U2Tx) -- used for uart to bluetooth converter
 // PB2 is used for PWM using T3CCP0.
 
+#define ENABLE_TESTS			0
 // Enable only one of the below
 #define AC_FREQUENCY_TEST		0
 #define LIGHTS_TEST				0
@@ -44,37 +46,22 @@
 #define UARTBT_ECHO_TEST		0
 #define ALARM_TEST				1
 
-void uartDebug_init() {
+static void uartDebug_init() {
     ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
     ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
     ROM_GPIOPinConfigure(GPIO_PA0_U0RX);
     ROM_GPIOPinConfigure(GPIO_PA1_U0TX);
     ROM_GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
     ROM_UARTConfigSetExpClk(UART0_BASE, ROM_SysCtlClockGet(), 115200, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
-
 }
 
-int main(void) {
+#if ENABLE_TESTS
+static void performTests() {
 	unsigned long brightness = 0, rxSize = 0;
 	char stringBuffer[128] = {0};
 	char helloBluetooth[] = "hello bluetooth! \r\n";
 	char hi[] = "hoi";
 	Time time = {sunday, 23, 59, 45, 0};
-
-	ROM_SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 5 (SYSCTL_SYSDIV_5) = 40MHz
-
-    ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
-    ROM_SysTickEnable();
-    ROM_IntMasterEnable();
-
-    uartDebug_init(); // Used for printf.
-    uartBt_init(); // Used for bluetooth communication with Android App.
-    lcd_init();
-    buttons_init();
-	time_init();
-	time_set(&time);
-	lights_init();
-	ROM_IntMasterEnable();
 
 #if AC_FREQUENCY_TEST
 	lights_printACfrequencyOnLCD();
@@ -114,6 +101,7 @@ int main(void) {
 		lcd_writeText(stringBuffer, 0, 0);
 #elif ALARM_TEST
 		alarm_init();
+		while(1);
 		ROM_SysCtlDelay(ROM_SysCtlClockGet()); // Each SysCtlDelay is about 3 clocks.
 		alarm_stop();
 		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 2);
@@ -122,4 +110,51 @@ int main(void) {
 		time_printCurrentOnLCD();
 #endif
 	}
+}
+#endif
+
+static void initSystem() {
+	ROM_FPUStackingDisable(); // Disable the Lazy Stacking of FPU registers. This reduces ISR latency but makes using FPU in ISR dangerous.
+	ROM_SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 2.5 (SYSCTL_SYSDIV_2_5) = 80MHz
+
+    ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
+    ROM_SysTickEnable();
+    ROM_IntMasterEnable();
+
+    uartDebug_init(); // Used for printf.
+    uartBt_init(); // Used for bluetooth communication with Android App.
+    lcd_init();
+    buttons_init();
+	time_init();
+	time_set(&time);
+	lights_init();
+	ROM_IntMasterEnable();
+}
+
+int main(void) {
+	unsigned char command[UARTBT_MAX_COMMAND_SIZE] = {0};
+	initSystem();
+
+#if ENABLE_TESTS
+	performTests();
+#endif
+
+	if(uartBt_receive(command) != 0) {
+		switch(command[0]) {
+		case 't': // get Time
+			break;
+		case 'T': // Set Time
+			break;
+		case 'a': // get Alarms
+			break;
+		case 'A': // Set Alarms
+			break;
+		case 'L': // Lights
+			break;
+		case 'z': // snoozzzzze Alarm
+			break;
+		case 'U': // I'm Up! Stop Alarm
+		}
+	}
+
 }

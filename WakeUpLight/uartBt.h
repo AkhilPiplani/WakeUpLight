@@ -23,6 +23,8 @@
 #define	UARTBT_PIN_RX		GPIO_PIN_6
 #define	UARTBT_PIN_TX		GPIO_PIN_7
 
+#define UARTBT_MAX_COMMAND_SIZE		32
+
 void uartBt_init();
 void uartBt_send(unsigned char *data, unsigned long size);
 unsigned long uartBt_receive(unsigned char *data);

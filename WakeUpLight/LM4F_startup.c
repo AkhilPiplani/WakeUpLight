@@ -30,6 +30,9 @@
 * Description:	LM4F120H5QR startup code.
 */
 
+#include <inc/hw_nvic.h>
+#include <inc/hw_types.h>
+
 //-----------------------------------------------------------------------------
 // 							 Functions declarations
 //-----------------------------------------------------------------------------
@@ -265,6 +268,8 @@ void rst_handler(void){
 		*dest++ = 0;
 	}
 	
+    HWREG(NVIC_CPAC) = ((HWREG(NVIC_CPAC) & ~(NVIC_CPAC_CP10_M | NVIC_CPAC_CP11_M)) | NVIC_CPAC_CP10_FULL | NVIC_CPAC_CP11_FULL);
+
 	// after setting copying .data to ram and "zero-ing" .bss we are good
 	// to start the main() method!
 	// There you go!
