@@ -29,7 +29,7 @@ void ISR_soundSamples(void);
 
 volatile unsigned int SoundIndex = 0;
 
-void sound_init() {
+void sound_play() {
 	SoundIndex = 0;
 
 	// Enable the relevant peripherals.

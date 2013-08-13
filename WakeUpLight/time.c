@@ -28,16 +28,11 @@
 #define MAX_NUMBER_OF_ALARMS	7
 
 static Time AlarmTimes[MAX_NUMBER_OF_ALARMS] = {{0}};
-static unsigned int NumberOfAlarms = 0;
-static tBoolean AlarmAcknowledged[MAX_NUMBER_OF_ALARMS];
+static Time SnoozeAlarmTime = {0};
+static unsigned long NumberOfAlarms = 0;
+static tBoolean SnoozeAlarmSet = false;
 
 void time_init() {
-	unsigned int i;
-
-	for(i=0; i<sizeof(AlarmAcknowledged); i++) {
-		AlarmAcknowledged[i] = true;
-	}
-
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_HIBERNATE);
 	ROM_HibernateEnableExpClk(ROM_SysCtlClockGet());
 	ROM_HibernateClockSelect(HIBERNATE_CLOCK_SEL_RAW);
@@ -146,8 +141,8 @@ void time_printCurrentOnLCD() {
 	}
 }
 
-int time_setAlarms(Time *time, unsigned int numberOfAlarms) {
-	unsigned int i;
+int time_setAlarms(Time *time, unsigned long numberOfAlarms) {
+	unsigned long i;
 
 	if(time==NULL || numberOfAlarms>MAX_NUMBER_OF_ALARMS) {
 		return -1;
@@ -165,6 +160,47 @@ int time_setAlarms(Time *time, unsigned int numberOfAlarms) {
 	return 0;
 }
 
+int time_setRawAlarms(unsigned long *rawAlarms, unsigned long numberOfAlarms) {
+	unsigned long i;
+
+	if(rawAlarms==NULL || numberOfAlarms>MAX_NUMBER_OF_ALARMS) {
+		return -1;
+	}
+
+	for(i=0; i<numberOfAlarms; i++) {
+		AlarmTimes[i].rawTime = rawAlarms[i];
+	}
+
+	NumberOfAlarms = numberOfAlarms;
+
+	return 0;
+}
+
+int time_getRawAlarms(unsigned long *rawAlarms, unsigned long *numberOfAlarms) {
+	unsigned int i;
+
+	if(rawAlarms==NULL || numberOfAlarms==NULL) {
+		return -1;
+	}
+
+	for(i=0; i<NumberOfAlarms; i++) {
+		rawAlarms[i] = AlarmTimes[i].rawTime;
+	}
+
+	*numberOfAlarms = NumberOfAlarms;
+
+	return 0;
+}
+
+void time_setSnoozeAlarm(unsigned long rawSnoozeAlarm) {
+	SnoozeAlarmTime.rawTime = rawSnoozeAlarm;
+	SnoozeAlarmSet = true;
+}
+
+void time_clearSnoozeAlarm() {
+	SnoozeAlarmSet = false;
+}
+
 tBoolean time_checkAlarm() {
 	static Time currentTime = {0};
 	unsigned int i;
@@ -172,19 +208,14 @@ tBoolean time_checkAlarm() {
 	time_get(&currentTime);
 
 	for(i=0; i<NumberOfAlarms; i++) {
-		if((AlarmTimes[i].rawTime - currentTime.rawTime < 11) && AlarmAcknowledged[i]==true) {
-			AlarmAcknowledged[i] = false;
+		if(AlarmTimes[i].rawTime - currentTime.rawTime < 2) {
 			return true;
 		}
 	}
 
-	return false;
-}
-
-void time_acknowledgeAlarm() {
-	unsigned int i;
-
-	for(i=0; i<NumberOfAlarms; i++) {
-		AlarmAcknowledged[i] = true;
+	if(SnoozeAlarmSet!=false && (SnoozeAlarmTime.rawTime - currentTime.rawTime < 2)) {
+		return true;
 	}
+
+	return false;
 }

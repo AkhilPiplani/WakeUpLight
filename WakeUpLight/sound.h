@@ -21,7 +21,7 @@
 
 #define SOUND_TIMERS_SYNC					(TIMER_2A_SYNC | TIMER_3A_SYNC)
 
-void sound_init();
+void sound_play();
 void sound_stop();
 
 #endif /* SOUND_H_ */

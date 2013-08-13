@@ -20,7 +20,7 @@ typedef enum _Day {
 	sunday = 6
 } Day;
 
-typedef struct _Time {
+typedef struct __attribute__ ((__packed__)) _Time {
 	Day day;
 
 	unsigned char hour;
@@ -35,8 +35,11 @@ void time_get(Time *time);
 void time_set(Time *time);
 void time_setRaw(unsigned long rawtime);
 void time_printCurrentOnLCD();
-int time_setAlarms(Time *time, unsigned int size); // Size = number of Time array elements, max 7
+int time_setAlarms(Time *time, unsigned long numberOfAlarms);
+int time_setRawAlarms(unsigned long *rawAlarms, unsigned long numberOfAlarms);
+int time_getRawAlarms(unsigned long *rawAlarms, unsigned long *numberOfAlarms);
+void time_setSnoozeAlarm(unsigned long rawSnoozeAlarm);
+void time_clearSnoozeAlarm();
 tBoolean time_checkAlarm();
-void time_acknowledgeAlarm();
 
 #endif /* TIME_H_ */

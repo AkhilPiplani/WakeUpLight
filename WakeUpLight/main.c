@@ -132,8 +132,21 @@ static void initSystem() {
 	ROM_IntMasterEnable();
 }
 
+typedef struct __attribute__ ((__packed__)) _AlarmGetSet {
+	unsigned char commandByte;
+	unsigned long numberOfAlarms;
+	unsigned long alarms[7];
+} AlarmSet;
+
+#define ALARM_BRIGHTNESS_DELAY 		0
+#define ALARM_BRIGHTNESS_INCREMENT	1
+
 int main(void) {
-	unsigned char command[UARTBT_MAX_COMMAND_SIZE] = {0};
+	unsigned char command[UARTBT_MAX_COMMAND_SIZE]  = {0};
+	unsigned char response[UARTBT_MAX_COMMAND_SIZE] = {0};
+	Time tempTime;
+	unsigned long tempUlong, alarmLightBrightness = 0, alarmBrightnessDelay = 0;
+	AlarmSet *alarmsSet = (AlarmSet *)command;
 
 	initSystem();
 
@@ -142,24 +155,59 @@ int main(void) {
 #endif
 
 	if(uartBt_receive(command) != 0) {
-		switch(command[0]) {
+		switch(command[0]) { // Set command bytes are Capitalized, get are not.
 		case 't': // get Time
+			time_get(&tempTime);
+			uartBt_send((unsigned char *)&tempTime, sizeof(tempTime));
 			break;
 		case 'T': // Set Time
+			memcpy((unsigned char *)&(tempTime.rawTime), &command[1], sizeof(tempTime.rawTime));
+			time_set(&tempTime);
 			break;
 		case 'a': // get Alarms
+			time_getRawAlarms((unsigned long*)&response[sizeof(unsigned long)], (unsigned long*)&response[0]);
+			uartBt_send(response, *((unsigned long*)response));
 			break;
 		case 'A': // Set Alarms
+			time_setRawAlarms((unsigned long *)(&(alarmsSet->alarms)), alarmsSet->numberOfAlarms);
 			break;
 		case 'L': // Lights
+			memcpy(&tempUlong, &command[1], sizeof(tempUlong));
+			lights_setBrightness(tempUlong);
 			break;
 		case 'z': // Snoozzzzze Alarm
+			time_get(&tempTime);
+			time_setSnoozeAlarm(tempTime.rawTime + 10*60);
+			lights_setBrightness(0);
+			alarmLightBrightness = 0;
+			sound_stop();
 			break;
 		case 'U': // I'm Up! Stop Alarm
+			lights_setBrightness(0);
+			alarmLightBrightness = 0;
+			sound_stop();
+			time_clearSnoozeAlarm();
 			break;
 		default:
 			break;
 		}
+	}
+
+	if(alarmLightBrightness!=0 && alarmLightBrightness<0xFFFFFFFF) {
+		if(alarmBrightnessDelay != 0) {
+			alarmBrightnessDelay--;
+		}
+		else {
+			alarmBrightnessDelay = ALARM_BRIGHTNESS_DELAY;
+			alarmLightBrightness += ALARM_BRIGHTNESS_INCREMENT;
+			lights_setBrightness(alarmLightBrightness);
+		}
+	}
+
+	if(time_checkAlarm() != false) {
+		alarmLightBrightness = 1;
+		lights_setBrightness(alarmLightBrightness);
+		sound_play();
 	}
 
 	return 0;
