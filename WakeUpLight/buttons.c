@@ -20,8 +20,6 @@
 #if SIMPLIFIED_BUTTONS
 
 void buttons_init() {
-	DebouncingCount = 0;
-
 	// Configure the peripheral and pins
 	ROM_SysCtlPeripheralEnable(BUTTONS_PORTENABLE);
 	ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_ALL_PINS, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
