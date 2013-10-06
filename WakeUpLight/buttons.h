@@ -10,6 +10,22 @@
 
 #include <inc/hw_types.h>
 
+// Previously I planned to scavenge an old system that had 6 buttons and an LCD.
+// The 6-buttons were in a 2D row/column format where scanning was needed.
+#define SIMPLIFIED_BUTTONS	1
+
+#if SIMPLIFIED_BUTTONS
+
+#define BUTTONS_PORT			GPIO_PORTC_BASE
+#define BUTTONS_PORTENABLE		SYSCTL_PERIPH_GPIOC
+#define BUTTONS_SNOOZE_PIN		GPIO_PIN_7
+#define BUTTONS_ALL_PINS		BUTTONS_SNOOZE_PIN // Only one button for now, later can be logical OR of multiple buttons on the same port.
+
+void buttons_init();
+long buttons_poll();
+
+#else
+
 #define BUTTONS_PORT		GPIO_PORTA_BASE
 #define BUTTONS_PORTENABLE	SYSCTL_PERIPH_GPIOA
 //#define BUTTONS_INTERRUPT	INT_GPIOA
@@ -46,5 +62,7 @@ extern tBoolean ButtonsStates[BUTTONS_NB_BUTTONS];
 
 void buttons_init();
 void buttons_poll();
+
+#endif
 
 #endif /* BUTTONS_H_ */

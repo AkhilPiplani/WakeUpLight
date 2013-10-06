@@ -21,6 +21,11 @@
 
 #define SOUND_TIMERS_SYNC					(TIMER_2A_SYNC | TIMER_3A_SYNC)
 
+#define SOUND_AMP_ENABLE_PORT				GPIO_PORTC_BASE
+#define SOUND_AMP_ENABLE_PORTENABLE			SYSCTL_PERIPH_GPIOC
+#define SOUND_AMP_ENABLE_PIN				GPIO_PIN_6
+
+void sound_init();
 void sound_play();
 void sound_stop();
 

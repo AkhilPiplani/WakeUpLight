@@ -25,7 +25,7 @@
 
 #define UARTBT_MAX_COMMAND_SIZE		32
 
-void uartBt_init();
+void uartBt_init(unsigned long baudrate);
 void uartBt_send(unsigned char *data, unsigned long size);
 unsigned long uartBt_receive(unsigned char *data);
 

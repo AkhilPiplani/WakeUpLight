@@ -29,9 +29,14 @@
 * Version:		1.0.0.
 * Description:	Linker description file for LM4FXXX microcontrollers.
 * 
-* Modifications by Akhil: Fixed incorrect values of initialized global variables 
-* due to data segment being displaced.
+* Modifications by Akhil: 
+* 1) Fixed incorrect values of initialized global variables due to data segment
+* being displaced.
 * This was because the text segment did not include all it should.
+* 
+* 2) Also added several sections needed by GCC ARM Embedded Toolchain such as
+* the exidx section. These sections are not needed by other compilers but don't
+* hurt.
 */
 
 

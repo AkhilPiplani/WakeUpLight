@@ -73,7 +73,7 @@ void ISR_uartBt(void) {
 	}
 }
 
-void uartBt_init() {
+void uartBt_init(unsigned long baudrate) {
 	ROM_SysCtlPeripheralEnable(UARTBT_PORTENABLE);
 	ROM_SysCtlPeripheralEnable(UARTBT_PERIPHENABLE);
 
@@ -88,8 +88,8 @@ void uartBt_init() {
 
 	ROM_GPIOPinTypeUART(UARTBT_PORT, UARTBT_PIN_RX | UARTBT_PIN_TX);
 
-	// Configure the UART for 9600, 8-N-1 operation.
-	ROM_UARTConfigSetExpClk(UARTBT_BASE, ROM_SysCtlClockGet(), 115200, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
+	// Configure the UART for the specified baud rate, 8-N-1 operation.
+	ROM_UARTConfigSetExpClk(UARTBT_BASE, ROM_SysCtlClockGet(), baudrate, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
 	ROM_UARTFIFODisable(UARTBT_BASE); // FIFO disabled so that short commands come through immediately
 //	ROM_UARTFIFOEnable(UARTBT_BASE);
 //	ROM_UARTFIFOLevelSet(UARTBT_BASE, UART_FIFO_TX4_8, UART_FIFO_RX4_8);
@@ -123,6 +123,7 @@ unsigned long uartBt_receive(unsigned char *data) {
 
 static void sendCommandToBC05(char *command) {
 	uartBt_send((unsigned char*)command, (unsigned long)strlen(command));
+	ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);
 }
 
 void uartBt_oneTimeSetup() {
@@ -133,6 +134,8 @@ void uartBt_oneTimeSetup() {
 	char getPassword[] = "AT+PSWD?\r\n";
 	char setPassword[] = "AT+PSWD=SleepWell\r\n"; // Think again if you think this is my real password. It's not a bad one though.
 	char setBaud[] = "AT+UART=115200,0,0\r\n";
+
+	//uartBt_init(38400); // Needed when using "Way 2" described in HC-05 manual.
 
 	sendCommandToBC05(getVersion);
 

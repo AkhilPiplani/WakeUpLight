@@ -34,8 +34,10 @@
 // Button Pins: PA2-PA6
 // Dimmer(lights) Pins: PE1-2
 // LCD Pins: PB0,1,4-7
-// UART(2) Pins: PD6-7 (PD6=U2Rx, PD7=U2Tx) -- used for uart to bluetooth converter
-// PB2 is used for PWM using T3CCP0.
+// UART(2) Pins: PD6-7 (PD6=U2Rx, PD7=U2Tx) -- used for UART to Bluetooth converter
+// PB2 is used for sound using T3CCP0 for PWM.
+// PC6 is used for sound amplifier power-enable / shutdown.
+// PC7 is used for the snooze button.
 
 #define ENABLE_TESTS			0
 // Enable only one of the below
@@ -82,6 +84,8 @@ static void performTests() {
 		lcd_writeText(stringBuffer, 0, 0);
 #elif UARTBT_LOOPBACK_TEST
 		// This test needs Rx and Tx pins to be shorted.
+		//uartBt_oneTimeSetup();
+		//while(1);
 		uartBt_send((unsigned char *)helloBluetooth, (unsigned long)strlen(helloBluetooth));
 		rxSize = uartBt_receive((unsigned char*)stringBuffer);
 		if(rxSize != 0) {
@@ -92,17 +96,24 @@ static void performTests() {
 #elif UARTBT_ECHO_TEST
 		// This test needs Rx and Tx pins to be shorted.
 		rxSize = uartBt_receive((unsigned char*)stringBuffer);
+		//uartBt_send((unsigned char*)"hi\r\n", 4);
 		if(rxSize != 0) {
 			uartBt_send((unsigned char*)stringBuffer, (unsigned long)strlen(stringBuffer));
 			uartBt_send((unsigned char*)"\r\n", 2);
 			memset(stringBuffer, 0, rxSize);
 		}
 #elif BUTTONS_TEST
+#if SIMPLIFIED_BUTTONS
+		sprintf(stringBuffer, "%d", buttons_poll());
+		lcd_writeText(stringBuffer, 0, 0);
+#else
 		buttons_poll();
 		sprintf(stringBuffer, "%d%d%d %d%d%d", Buttons_States[0], Buttons_States[1], Buttons_States[2], Buttons_States[3], Buttons_States[4], Buttons_States[5]);
 		lcd_writeText(stringBuffer, 0, 0);
+#endif
 #elif SOUND_TEST
 		sound_init();
+		sound_play();
 		while(1);
 		ROM_SysCtlDelay(ROM_SysCtlClockGet()); // Each SysCtlDelay is about 3 clocks.
 		sound_stop();
@@ -124,11 +135,17 @@ static void initSystem() {
     ROM_IntMasterEnable();
 
     uartDebug_init(); // Used for printf.
-    uartBt_init(); // Used for bluetooth communication with Android App.
-    lcd_init();
+    
+    //uartBt_init(9600); 
+    //uartBt_oneTimeSetup();
+    
+    uartBt_init(115200); // Used for bluetooth communication with Android App.
+    //lcd_init(); // Not used anymore
+    
     buttons_init();
 	time_init();
 	lights_init();
+	sound_init();
 	ROM_IntMasterEnable();
 }
 
@@ -141,14 +158,37 @@ typedef struct __attribute__ ((__packed__)) _AlarmGetSet {
 #define ALARM_BRIGHTNESS_DELAY 		0
 #define ALARM_BRIGHTNESS_INCREMENT	1
 
+static unsigned long AlarmLightBrightness = 0, AlarmBrightnessDelay = 0;
+static Time TempTime;
+
+static void snoozeAlarm() {
+	time_get(&TempTime);
+	time_setSnoozeAlarm(TempTime.rawTime + 10*60);
+	lights_setBrightness(0);
+	AlarmLightBrightness = 0;
+	sound_stop();
+}
+
+static void stopAlarm() {
+	lights_setBrightness(0);
+	AlarmLightBrightness = 0;
+	sound_stop();
+	time_clearSnoozeAlarm();
+}
+
 int main(void) {
 	unsigned char command[UARTBT_MAX_COMMAND_SIZE]  = {0};
 	unsigned char response[UARTBT_MAX_COMMAND_SIZE] = {0};
-	Time tempTime;
-	unsigned long tempUlong, alarmLightBrightness = 0, alarmBrightnessDelay = 0;
+	unsigned long tempUlong;
 	AlarmSet *alarmsSet = (AlarmSet *)command;
 
 	initSystem();
+
+#ifdef __OPTIMIZE__
+	printf("\n\r -- Compiled on %s %s in Release mode --\n\r", __DATE__, __TIME__);
+#else
+	printf("\n\r -- Compiled on %s %s in Debug mode --\n\r",   __DATE__, __TIME__);
+#endif
 
 #if ENABLE_TESTS
 	performTests();
@@ -157,12 +197,12 @@ int main(void) {
 	if(uartBt_receive(command) != 0) {
 		switch(command[0]) { // Set command bytes are Capitalized, get are not.
 		case 't': // get Time
-			time_get(&tempTime);
-			uartBt_send((unsigned char *)&tempTime, sizeof(tempTime));
+			time_get(&TempTime);
+			uartBt_send((unsigned char *)&TempTime, sizeof(TempTime));
 			break;
 		case 'T': // Set Time
-			memcpy((unsigned char *)&(tempTime.rawTime), &command[1], sizeof(tempTime.rawTime));
-			time_set(&tempTime);
+			memcpy((unsigned char *)&(TempTime.rawTime), &command[1], sizeof(TempTime.rawTime));
+			time_set(&TempTime);
 			break;
 		case 'a': // get Alarms
 			time_getRawAlarms((unsigned long*)&response[sizeof(unsigned long)], (unsigned long*)&response[0]);
@@ -176,37 +216,42 @@ int main(void) {
 			lights_setBrightness(tempUlong);
 			break;
 		case 'z': // Snoozzzzze Alarm
-			time_get(&tempTime);
-			time_setSnoozeAlarm(tempTime.rawTime + 10*60);
-			lights_setBrightness(0);
-			alarmLightBrightness = 0;
-			sound_stop();
+			snoozeAlarm();
 			break;
 		case 'U': // I'm Up! Stop Alarm
-			lights_setBrightness(0);
-			alarmLightBrightness = 0;
-			sound_stop();
-			time_clearSnoozeAlarm();
+			stopAlarm();
 			break;
 		default:
 			break;
 		}
 	}
 
-	if(alarmLightBrightness!=0 && alarmLightBrightness<0xFFFFFFFF) {
-		if(alarmBrightnessDelay != 0) {
-			alarmBrightnessDelay--;
+	// Poll the snooze button. If pressed, wait 1-second and poll again.
+	// Still-pressed = alarm-off, else snooze.
+	if(buttons_poll() != 0) {
+		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
+		if(buttons_poll() != 0) {
+			stopAlarm();
 		}
 		else {
-			alarmBrightnessDelay = ALARM_BRIGHTNESS_DELAY;
-			alarmLightBrightness += ALARM_BRIGHTNESS_INCREMENT;
-			lights_setBrightness(alarmLightBrightness);
+			snoozeAlarm();
+		}
+	}
+
+	if(AlarmLightBrightness!=0 && AlarmLightBrightness<0xFFFFFFFF) {
+		if(AlarmBrightnessDelay != 0) {
+			AlarmBrightnessDelay--;
+		}
+		else {
+			AlarmBrightnessDelay = ALARM_BRIGHTNESS_DELAY;
+			AlarmLightBrightness += ALARM_BRIGHTNESS_INCREMENT;
+			lights_setBrightness(AlarmLightBrightness);
 		}
 	}
 
 	if(time_checkAlarm() != false) {
-		alarmLightBrightness = 1;
-		lights_setBrightness(alarmLightBrightness);
+		AlarmLightBrightness = 1;
+		lights_setBrightness(AlarmLightBrightness);
 		sound_play();
 	}
 
