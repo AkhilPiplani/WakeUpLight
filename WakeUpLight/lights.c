@@ -73,6 +73,7 @@ void lights_init() {
 	ROM_GPIOPinTypeGPIOOutput(LIGHTS_PORT, LIGHTS_DIMMER_OUT);
 	ROM_GPIOPadConfigSet(LIGHTS_PORT, LIGHTS_DIMMER_OUT, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
 	ROM_GPIOPinTypeGPIOInput(LIGHTS_PORT, LIGHTS_0CROSSING_IN);
+	ROM_GPIOPadConfigSet(LIGHTS_PORT, LIGHTS_0CROSSING_IN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD); // Comment me if 0-Crossing has issues.
 	ROM_GPIOIntTypeSet(LIGHTS_PORT, LIGHTS_0CROSSING_IN, GPIO_RISING_EDGE);
 	ROM_GPIOPinIntDisable(LIGHTS_PORT, 0xFF);
 	GPIOPortIntRegister(LIGHTS_PORT, ISR_lights);
@@ -88,9 +89,8 @@ void lights_setBrightness(unsigned long brightness) {
 	DimmerTriggerDelay = AChalfCycleTime - brightness;
 }
 
-void lights_printACfrequencyOnLCD() {
+void lights_printACfrequency() {
 	Time time, lastTime;
-	char printString[64] = {0};
 
 	ZeroCrossingCount = 0;
 	time_get(&lastTime);
@@ -98,8 +98,7 @@ void lights_printACfrequencyOnLCD() {
 	while(1) {
 		time_get(&time);
 		if(time.second != lastTime.second) {
-			sprintf(printString, "%u %u   ", ZeroCrossingCount, time.second);
-			lcd_writeText(printString, 0, 0);
+			printf("%u %u \n\r", ZeroCrossingCount, time.second);
 			lastTime = time;
 			ZeroCrossingCount = 0;
 		}

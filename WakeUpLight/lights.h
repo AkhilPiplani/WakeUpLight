@@ -28,6 +28,6 @@ extern unsigned long lights_MaxBrightness;
 
 void lights_init();
 void lights_setBrightness(unsigned long brightness);
-void lights_printACfrequencyOnLCD();
+void lights_printACfrequency();
 
 #endif /* LIGHTS_H_ */

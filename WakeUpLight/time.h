@@ -11,13 +11,13 @@
 #include <inc/hw_types.h>
 
 typedef enum _Day {
-	monday = 0,
-	tuesday = 1,
-	wednesday = 2,
-	thursday = 3,
-	friday = 4,
-	saturday = 5,
-	sunday = 6
+	sunday = 0,
+	monday = 1,
+	tuesday = 2,
+	wednesday = 3,
+	thursday = 4,
+	friday = 5,
+	saturday = 6,
 } Day;
 
 typedef struct __attribute__ ((__packed__)) _Time {
@@ -34,7 +34,7 @@ void time_init();
 void time_get(Time *time);
 void time_set(Time *time);
 void time_setRaw(unsigned long rawtime);
-void time_printCurrentOnLCD();
+void time_printCurrent();
 int time_setAlarms(Time *time, unsigned long numberOfAlarms);
 int time_setRawAlarms(unsigned long *rawAlarms, unsigned long numberOfAlarms);
 int time_getRawAlarms(unsigned long *rawAlarms, unsigned long *numberOfAlarms);

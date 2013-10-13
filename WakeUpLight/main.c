@@ -46,7 +46,7 @@
 #define BUTTONS_TEST			0
 #define UARTBT_LOOPBACK_TEST	0
 #define UARTBT_ECHO_TEST		0
-#define SOUND_TEST				1
+#define SOUND_TEST				0
 
 static void uartDebug_init() {
     ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
@@ -59,7 +59,7 @@ static void uartDebug_init() {
 
 #if ENABLE_TESTS
 static void performTests() {
-	unsigned long brightness = 0, rxSize = 0;
+	unsigned long brightness = 0, rxSize = 0, echoCount = 0;
 	char stringBuffer[128] = {0};
 	char helloBluetooth[] = "hello bluetooth! \r\n";
 	char hi[] = "hoi";
@@ -68,7 +68,7 @@ static void performTests() {
 	time_set(&testTime);
 
 #if AC_FREQUENCY_TEST
-	lights_printACfrequencyOnLCD();
+	lights_printACfrequency();
 #endif
 
 	while(1) {
@@ -80,12 +80,9 @@ static void performTests() {
 			brightness = 0;
 		}
 
-		sprintf(stringBuffer, "%lu   ", brightness);
-		lcd_writeText(stringBuffer, 0, 0);
+		printf("%lu \n\r", brightness);
 #elif UARTBT_LOOPBACK_TEST
-		// This test needs Rx and Tx pins to be shorted.
-		//uartBt_oneTimeSetup();
-		//while(1);
+		// This test needs Rx and Tx pins to be shorted
 		uartBt_send((unsigned char *)helloBluetooth, (unsigned long)strlen(helloBluetooth));
 		rxSize = uartBt_receive((unsigned char*)stringBuffer);
 		if(rxSize != 0) {
@@ -94,22 +91,21 @@ static void performTests() {
 			}
 		}
 #elif UARTBT_ECHO_TEST
-		// This test needs Rx and Tx pins to be shorted.
 		rxSize = uartBt_receive((unsigned char*)stringBuffer);
 		//uartBt_send((unsigned char*)"hi\r\n", 4);
 		if(rxSize != 0) {
 			uartBt_send((unsigned char*)stringBuffer, (unsigned long)strlen(stringBuffer));
-			uartBt_send((unsigned char*)"\r\n", 2);
+			sprintf(stringBuffer, "%lu \r\n", echoCount);
+			uartBt_send((unsigned char*)stringBuffer, (unsigned long)strlen(stringBuffer));
 			memset(stringBuffer, 0, rxSize);
+			echoCount++;
 		}
 #elif BUTTONS_TEST
 #if SIMPLIFIED_BUTTONS
-		sprintf(stringBuffer, "%d", buttons_poll());
-		lcd_writeText(stringBuffer, 0, 0);
+		printf("%lu \n\r", buttons_poll());
 #else
 		buttons_poll();
-		sprintf(stringBuffer, "%d%d%d %d%d%d", Buttons_States[0], Buttons_States[1], Buttons_States[2], Buttons_States[3], Buttons_States[4], Buttons_States[5]);
-		lcd_writeText(stringBuffer, 0, 0);
+		printf("%d%d%d %d%d%d \n\r", Buttons_States[0], Buttons_States[1], Buttons_States[2], Buttons_States[3], Buttons_States[4], Buttons_States[5]);
 #endif
 #elif SOUND_TEST
 		sound_init();
@@ -120,14 +116,14 @@ static void performTests() {
 		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 2);
 #else
 		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 100);
-		time_printCurrentOnLCD();
+		time_printCurrent();
 #endif
 	}
 }
 #endif
 
 static void initSystem() {
-	ROM_FPUStackingDisable(); // Disable the Lazy Stacking of FPU registers. This reduces ISR latency but makes using FPU in ISR dangerous.
+//	ROM_FPUStackingDisable(); // Disable the Lazy Stacking of FPU registers. This reduces ISR latency but makes using FPU in ISR dangerous.
 	ROM_SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 2.5 (SYSCTL_SYSDIV_2_5) = 80MHz
 
     ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
@@ -158,7 +154,7 @@ typedef struct __attribute__ ((__packed__)) _AlarmGetSet {
 #define ALARM_BRIGHTNESS_DELAY 		0
 #define ALARM_BRIGHTNESS_INCREMENT	1
 
-static unsigned long AlarmLightBrightness = 0, AlarmBrightnessDelay = 0;
+static unsigned long AlarmLightBrightness = 0, AlarmBrightnessDelay = 0, AlarmLightMaxBrightness = 0xFFFFFFFF;
 static Time TempTime;
 
 static void snoozeAlarm() {
@@ -177,82 +173,118 @@ static void stopAlarm() {
 }
 
 int main(void) {
-	unsigned char command[UARTBT_MAX_COMMAND_SIZE]  = {0};
-	unsigned char response[UARTBT_MAX_COMMAND_SIZE] = {0};
-	unsigned long tempUlong;
+	char command[UARTBT_MAX_COMMAND_SIZE]  = {0};
+	char response[UARTBT_MAX_COMMAND_SIZE] = {0};
+	unsigned char tempUchar;
+	unsigned long rawAlarms[7] = {0}, numberOfAlarms, i, echoCount = 0;
 	AlarmSet *alarmsSet = (AlarmSet *)command;
 
 	initSystem();
 
 #ifdef __OPTIMIZE__
-	printf("\n\r -- Compiled on %s %s in Release mode --\n\r", __DATE__, __TIME__);
+	printf("\n\r -- Compiled on %s %s in Release mode --\r\n", __DATE__, __TIME__);
 #else
-	printf("\n\r -- Compiled on %s %s in Debug mode --\n\r",   __DATE__, __TIME__);
+	printf("\n\r -- Compiled on %s %s in Debug mode --\r\n",   __DATE__, __TIME__);
 #endif
 
 #if ENABLE_TESTS
 	performTests();
 #endif
 
-	if(uartBt_receive(command) != 0) {
-		switch(command[0]) { // Set command bytes are Capitalized, get are not.
-		case 't': // get Time
-			time_get(&TempTime);
-			uartBt_send((unsigned char *)&TempTime, sizeof(TempTime));
-			break;
-		case 'T': // Set Time
-			memcpy((unsigned char *)&(TempTime.rawTime), &command[1], sizeof(TempTime.rawTime));
-			time_set(&TempTime);
-			break;
-		case 'a': // get Alarms
-			time_getRawAlarms((unsigned long*)&response[sizeof(unsigned long)], (unsigned long*)&response[0]);
-			uartBt_send(response, *((unsigned long*)response));
-			break;
-		case 'A': // Set Alarms
-			time_setRawAlarms((unsigned long *)(&(alarmsSet->alarms)), alarmsSet->numberOfAlarms);
-			break;
-		case 'L': // Lights
-			memcpy(&tempUlong, &command[1], sizeof(tempUlong));
-			lights_setBrightness(tempUlong);
-			break;
-		case 'z': // Snoozzzzze Alarm
-			snoozeAlarm();
-			break;
-		case 'U': // I'm Up! Stop Alarm
-			stopAlarm();
-			break;
-		default:
-			break;
-		}
-	}
+	while(1) {
+		if(uartBt_receive((unsigned char*)command) != 0) {
 
-	// Poll the snooze button. If pressed, wait 1-second and poll again.
-	// Still-pressed = alarm-off, else snooze.
-	if(buttons_poll() != 0) {
-		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
-		if(buttons_poll() != 0) {
-			stopAlarm();
-		}
-		else {
-			snoozeAlarm();
-		}
-	}
+				// DEBUG CODE: Echo back the command along with the number of commands sent so far
+				uartBt_send((unsigned char*)command, (unsigned long)strlen(command));
+				sprintf(response, "%lu \r\n", echoCount);
+				uartBt_send((unsigned char*)response, (unsigned long)strlen(response));
+				echoCount++;
 
-	if(AlarmLightBrightness!=0 && AlarmLightBrightness<0xFFFFFFFF) {
-		if(AlarmBrightnessDelay != 0) {
-			AlarmBrightnessDelay--;
-		}
-		else {
-			AlarmBrightnessDelay = ALARM_BRIGHTNESS_DELAY;
-			AlarmLightBrightness += ALARM_BRIGHTNESS_INCREMENT;
-			lights_setBrightness(AlarmLightBrightness);
-		}
-	}
+				switch(command[0]) { // Set command bytes are Capitalized, get are not.
+				case 't': // get Time
+					time_get(&TempTime);
+					sprintf(response, "%d:%02d:%02d:%02d\r\n", TempTime.day, TempTime.hour, TempTime.minute, TempTime.second);
+					uartBt_send((unsigned char*)response, strlen(response));
+					break;
 
-	if(time_checkAlarm() != false) {
-		AlarmLightBrightness = 1;
-		lights_setBrightness(AlarmLightBrightness);
-		sound_play();
+				case 'T': // Set Time
+					sscanf(&command[1], "%d:%02d:%02d:%02d\r\n", &(TempTime.day), &(TempTime.hour), &(TempTime.minute), &(TempTime.second));
+					time_set(&TempTime);
+					break;
+
+				case 'a': // get Alarms
+					time_getRawAlarms(rawAlarms, &numberOfAlarms);
+
+					memset(response, 0, sizeof(response));
+					sprintf(response, "%lu", numberOfAlarms);
+					for(i=0; i<numberOfAlarms; i++) {
+						sprintf(response + strlen(response), "%lu", rawAlarms[i]);
+					}
+					sprintf(response + strlen(response), "\r\n");
+
+					uartBt_send((unsigned char*)response, strlen(response));
+					break;
+
+				case 'A': // Set Alarms
+					// We always receive 7 time-values from the Android app in the same format as "Set Time".
+					// The app will set an invalid time-value in the alarm-slot it want's to be Off. We check this using the day-field
+					// TODO: Write the Set Alarms Case.
+
+					time_setRawAlarms((unsigned long *)(&(alarmsSet->alarms)), alarmsSet->numberOfAlarms);
+					break;
+
+				case 'B': // Set Maximum Alarm-Brightness
+					sscanf(&command[1], "%d\r\n", (unsigned int*)&tempUchar); // App sends a brightness percentage (0-100).
+					AlarmLightMaxBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
+					break;
+
+				case 'L': // Lights
+					sscanf(&command[1], "%d\r\n", (unsigned int*)&tempUchar); // App sends a brightness percentage (0-100).
+					printf("Received percentage = %d, setting brightness = %lu \r\n", tempUchar, ((unsigned long)tempUchar * (lights_MaxBrightness / 100)));
+					lights_setBrightness((unsigned long)tempUchar * (lights_MaxBrightness / 100));
+					break;
+
+				case 'z': // Snoozzzzze Alarm
+					snoozeAlarm();
+					break;
+
+				case 'U': // I'm Up! Stop Alarm
+					stopAlarm();
+					break;
+
+				default:
+					break;
+				}
+			}
+
+			// Poll the snooze button. If pressed, wait 1-second and poll again.
+			// Still-pressed = alarm-off, else snooze.
+			if(buttons_poll() != 0) {
+				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
+				if(buttons_poll() != 0) {
+					stopAlarm();
+				}
+				else {
+					snoozeAlarm();
+				}
+			}
+
+			if(AlarmLightBrightness!=0 && AlarmLightBrightness<=AlarmLightMaxBrightness) {
+				if(AlarmBrightnessDelay != 0) {
+					AlarmBrightnessDelay--;
+				}
+				else {
+					AlarmBrightnessDelay = ALARM_BRIGHTNESS_DELAY;
+					AlarmLightBrightness += ALARM_BRIGHTNESS_INCREMENT;
+					lights_setBrightness(AlarmLightBrightness);
+				}
+			}
+
+			if(time_checkAlarm() != false) {
+				AlarmLightBrightness = 1;
+				lights_setBrightness(AlarmLightBrightness);
+				sound_play();
+			}
 	}
 
 	return 0;

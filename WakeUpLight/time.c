@@ -13,7 +13,6 @@
 #include <driverlib/sysctl.h>
 #include <driverlib/hibernate.h>
 #include <driverlib/rom.h>
-#include "lcd44780_LP.h"
 #include "time.h"
 
 #define SECONDS_IN_A_WEEK	604800
@@ -98,6 +97,10 @@ static void buildTimeString(Time *time, char *timeString) {
 	uCharToSting(time->second, timeString+9);
 
 	switch(time->day) {
+	case sunday:
+		timeString[12] = 'S';
+		timeString[13] = 'u';
+		break;
 	case monday:
 		timeString[12] = 'M';
 		break;
@@ -119,16 +122,12 @@ static void buildTimeString(Time *time, char *timeString) {
 		timeString[12] = 'S';
 		timeString[13] = 'a';
 		break;
-	case sunday:
-		timeString[12] = 'S';
-		timeString[13] = 'u';
-		break;
 	default:
 		break;
 	}
 }
 
-void time_printCurrentOnLCD() {
+void time_printCurrent() {
 	static Time currentTime = {0}, lastTime = {0};
 	static char currentTimeString[64] = {0};
 
@@ -136,7 +135,7 @@ void time_printCurrentOnLCD() {
 
 	if(currentTime.rawTime != lastTime.rawTime) {
 		buildTimeString(&currentTime, currentTimeString);
-		lcd_writeText(currentTimeString, 0, 0);
+		printf("%s \n\r", currentTimeString);
 		lastTime.rawTime = currentTime.rawTime;
 	}
 }
