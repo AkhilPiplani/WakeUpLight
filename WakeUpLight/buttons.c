@@ -29,6 +29,9 @@ void buttons_init() {
 }
 
 long buttons_poll() {
+	// No de-bouncing is needed for now.
+	// If this code detects the snooze button being hit many times due to bouncing, it doesn't matter.
+	return ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_ALL_PINS);
 
 	// Simple debouncing code.
 //	if(ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_ALL_PINS) != 0) {
@@ -37,13 +40,7 @@ long buttons_poll() {
 //			return ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_ALL_PINS);
 //		}
 //	}
-//	else {
-//		return 0;
-//	}
-
-	// No de-bouncing is needed for now.
-	// If this code detects the snooze button being hit many times due to bouncing, it doesn't matter.
-	return ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_ALL_PINS);
+//	return 0;
 }
 
 #else
