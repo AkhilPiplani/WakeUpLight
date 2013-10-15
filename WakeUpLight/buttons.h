@@ -18,7 +18,7 @@
 
 #define BUTTONS_PORT			GPIO_PORTC_BASE
 #define BUTTONS_PORTENABLE		SYSCTL_PERIPH_GPIOC
-#define BUTTONS_SNOOZE_PIN		GPIO_PIN_7
+#define BUTTONS_SNOOZE_PIN		GPIO_PIN_5
 #define BUTTONS_ALL_PINS		BUTTONS_SNOOZE_PIN // Only one button for now, later can be logical OR of multiple buttons on the same port.
 
 void buttons_init();

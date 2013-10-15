@@ -123,7 +123,7 @@ static void performTests() {
 #endif
 
 static void initSystem() {
-//	ROM_FPUStackingDisable(); // Disable the Lazy Stacking of FPU registers. This reduces ISR latency but makes using FPU in ISR dangerous.
+	ROM_FPUStackingDisable(); // Disable the Lazy Stacking of FPU registers. This reduces ISR latency but makes using FPU in ISR dangerous.
 	ROM_SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 2.5 (SYSCTL_SYSDIV_2_5) = 80MHz
 
     ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
@@ -242,6 +242,7 @@ int main(void) {
 					sscanf(&command[1], "%d\r\n", (unsigned int*)&tempUchar); // App sends a brightness percentage (0-100).
 					printf("Received percentage = %d, setting brightness = %lu \r\n", tempUchar, ((unsigned long)tempUchar * (lights_MaxBrightness / 100)));
 					lights_setBrightness((unsigned long)tempUchar * (lights_MaxBrightness / 100));
+
 					break;
 
 				case 'z': // Snoozzzzze Alarm

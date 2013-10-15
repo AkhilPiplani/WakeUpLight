@@ -23,7 +23,7 @@ void buttons_init() {
 	// Configure the peripheral and pins
 	ROM_SysCtlPeripheralEnable(BUTTONS_PORTENABLE);
 //	ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_ALL_PINS, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
-	ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_ALL_PINS, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD); // Use this if buttons don't read so well.
+	ROM_GPIOPadConfigSet(BUTTONS_PORT, BUTTONS_ALL_PINS, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD_WPD); // Use this if buttons don't read so well.
 	ROM_GPIOPinTypeGPIOInput(BUTTONS_PORT,  BUTTONS_ALL_PINS);
 
 }
@@ -32,6 +32,15 @@ long buttons_poll() {
 	// No de-bouncing is needed for now.
 	// If this code detects the snooze button being hit many times due to bouncing, it doesn't matter.
 	return ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_ALL_PINS);
+
+	// Debug code to print the button status when it's pressed.
+//	unsigned long status = ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_ALL_PINS);
+//
+//	if(status != 0) {
+//		printf("Buttons: %d \r\n", status);
+//	}
+//
+//	return status;
 
 	// Simple debouncing code.
 //	if(ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_ALL_PINS) != 0) {
