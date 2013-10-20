@@ -149,9 +149,8 @@ int time_setAlarms(Time *time, unsigned long numberOfAlarms) {
 
 	memcpy(AlarmTimes, time, numberOfAlarms*sizeof(Time));
 	for(i=0; i<numberOfAlarms; i++) {
-		if(AlarmTimes[i].rawTime == 0) {
-			AlarmTimes[i].rawTime = AlarmTimes[i].second + 60*AlarmTimes[i].minute + 3600*AlarmTimes[i].hour + SECONDS_IN_A_DAY*AlarmTimes[i].day;
-		}
+		AlarmTimes[i].rawTime = AlarmTimes[i].second + 60*AlarmTimes[i].minute + 3600*AlarmTimes[i].hour + SECONDS_IN_A_DAY*AlarmTimes[i].day;
+		printf("Setting alarm at raw-time: %d\n\r", AlarmTimes[i].rawTime);
 	}
 
 	NumberOfAlarms = numberOfAlarms;
@@ -168,9 +167,25 @@ int time_setRawAlarms(unsigned long *rawAlarms, unsigned long numberOfAlarms) {
 
 	for(i=0; i<numberOfAlarms; i++) {
 		AlarmTimes[i].rawTime = rawAlarms[i];
+
+		AlarmTimes[i].day = AlarmTimes[i].rawTime / (60*60*24);
+		AlarmTimes[i].hour = (AlarmTimes[i].rawTime - AlarmTimes[i].day * (60*60*24)) / (60*60);
+		AlarmTimes[i].minute = (AlarmTimes[i].rawTime / 60) % 60;
+		AlarmTimes[i].second = AlarmTimes[i].rawTime % 60;
 	}
 
 	NumberOfAlarms = numberOfAlarms;
+
+	return 0;
+}
+
+int time_getAlarms(Time *alarms, unsigned long *numberOfAlarms) {
+	if(alarms==NULL || numberOfAlarms==NULL) {
+		return -1;
+	}
+
+	memcpy(alarms, AlarmTimes, NumberOfAlarms*sizeof(Time));
+	*numberOfAlarms = NumberOfAlarms;
 
 	return 0;
 }

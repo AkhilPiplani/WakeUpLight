@@ -145,41 +145,60 @@ static void initSystem() {
 	ROM_IntMasterEnable();
 }
 
-typedef struct __attribute__ ((__packed__)) _AlarmGetSet {
-	unsigned char commandByte;
-	unsigned long numberOfAlarms;
-	unsigned long alarms[7];
-} AlarmSet;
-
-#define ALARM_BRIGHTNESS_DELAY 		0
 #define ALARM_BRIGHTNESS_INCREMENT	1
+#define ALARM_TIMEOUT_SECONDS		600
 
-static unsigned long AlarmLightBrightness = 0, AlarmBrightnessDelay = 0, AlarmLightMaxBrightness = 0xFFFFFFFF;
-static Time TempTime;
+typedef enum _AlarmStatus {
+	off,
+	snoozed,
+	lightsOn,
+	playingSound
+} AlarmStatus;
+
+static unsigned long AlarmLightBrightness = 0, AlarmBrightnessDelay = 0, AlarmLightMaxBrightness = 0xFFFFFFFF, AlaramBrightnessDelay = 0;
+static Time TempTime, AlarmStartTime;
+AlarmStatus AlarmState = off;
 
 static void snoozeAlarm() {
-	time_get(&TempTime);
-	time_setSnoozeAlarm(TempTime.rawTime + 10*60);
-	lights_setBrightness(0);
-	AlarmLightBrightness = 0;
+	printf("snoozeAlarm\n\r");
+
+	if(AlarmState == off) {
+		lights_setBrightness(0);
+		AlarmLightBrightness = 0;
+	}
+	else {
+		time_get(&TempTime);
+		time_setSnoozeAlarm(TempTime.rawTime + 10*60);
+	//	lights_setBrightness(0);
+	//	AlarmLightBrightness = 0;
+		AlarmState = snoozed;
+	}
+
 	sound_stop();
 }
 
 static void stopAlarm() {
+	printf("stopAlarm\n\r");
 	lights_setBrightness(0);
 	AlarmLightBrightness = 0;
 	sound_stop();
+	AlarmState = off;
 	time_clearSnoozeAlarm();
 }
 
 int main(void) {
 	char command[UARTBT_MAX_COMMAND_SIZE]  = {0};
 	char response[UARTBT_MAX_COMMAND_SIZE] = {0};
+	char tempString[UARTBT_MAX_COMMAND_SIZE] = {0};
 	unsigned char tempUchar;
-	unsigned long rawAlarms[7] = {0}, numberOfAlarms, i, echoCount = 0;
-	AlarmSet *alarmsSet = (AlarmSet *)command;
+	unsigned int offset, i;
+	unsigned long numberOfAlarms, echoCount = 0;
+	Time alarms[7];
 
 	initSystem();
+
+	// For now, use the maximum-lights-brightness for the alarm, this can be user-settable in future.
+	AlarmLightMaxBrightness = lights_MaxBrightness;
 
 #ifdef __OPTIMIZE__
 	printf("\n\r -- Compiled on %s %s in Release mode --\r\n", __DATE__, __TIME__);
@@ -194,98 +213,149 @@ int main(void) {
 	while(1) {
 		if(uartBt_receive((unsigned char*)command) != 0) {
 
-				// DEBUG CODE: Echo back the command along with the number of commands sent so far
-				uartBt_send((unsigned char*)command, (unsigned long)strlen(command));
-				sprintf(response, "%lu \r\n", echoCount);
-				uartBt_send((unsigned char*)response, (unsigned long)strlen(response));
-				echoCount++;
+			// DEBUG CODE: Echo back the command along with the number of commands sent so far
+			uartBt_send((unsigned char*)command, (unsigned long)strlen(command));
+			sprintf(response, "%lu \r\n", echoCount);
+			uartBt_send((unsigned char*)response, (unsigned long)strlen(response));
+			echoCount++;
 
-				switch(command[0]) { // Set command bytes are Capitalized, get are not.
-				case 't': // get Time
-					time_get(&TempTime);
-					sprintf(response, "%d:%02d:%02d:%02d\r\n", TempTime.day, TempTime.hour, TempTime.minute, TempTime.second);
-					uartBt_send((unsigned char*)response, strlen(response));
-					break;
+			switch(command[0]) { // Set command bytes are Capitalized, get are not.
+			case 't': // get Time -- not used by Android App yet.
+				time_get(&TempTime);
+				sprintf(response, "%d:%02d:%02d:%02d\r\n", TempTime.day, TempTime.hour, TempTime.minute, TempTime.second);
+				uartBt_send((unsigned char*)response, strlen(response));
+				break;
 
-				case 'T': // Set Time
-					sscanf(&command[1], "%d:%02d:%02d:%02d\r\n", &(TempTime.day), &(TempTime.hour), &(TempTime.minute), &(TempTime.second));
-					time_set(&TempTime);
-					break;
+			case 'T': // Set Time
+				printf("Setting Time\n\r");
+				sscanf(&command[1], "%d:%02d:%02d:%02d\r\n", &(TempTime.day), &(TempTime.hour), &(TempTime.minute), &(TempTime.second));
+				time_set(&TempTime);
+				break;
 
-				case 'a': // get Alarms
-					time_getRawAlarms(rawAlarms, &numberOfAlarms);
+			case 'a': // get Alarms  -- not used by Android App yet.
+				memset(response, 0, sizeof(response));
+				time_getAlarms(alarms, &numberOfAlarms);
 
-					memset(response, 0, sizeof(response));
-					sprintf(response, "%lu", numberOfAlarms);
-					for(i=0; i<numberOfAlarms; i++) {
-						sprintf(response + strlen(response), "%lu", rawAlarms[i]);
+				for(i=0; i<7; i++) {
+					if(i < numberOfAlarms) {
+						sprintf(response + strlen(response), "%d:%02d:%02d:%02d,", alarms[i].day, alarms[i].hour, alarms[i].minute, alarms[i].second);
 					}
-					sprintf(response + strlen(response), "\r\n");
-
-					uartBt_send((unsigned char*)response, strlen(response));
-					break;
-
-				case 'A': // Set Alarms
-					// We always receive 7 time-values from the Android app in the same format as "Set Time".
-					// The app will set an invalid time-value in the alarm-slot it want's to be Off. We check this using the day-field
-					// TODO: Write the Set Alarms Case.
-
-					time_setRawAlarms((unsigned long *)(&(alarmsSet->alarms)), alarmsSet->numberOfAlarms);
-					break;
-
-				case 'B': // Set Maximum Alarm-Brightness
-					sscanf(&command[1], "%d\r\n", (unsigned int*)&tempUchar); // App sends a brightness percentage (0-100).
-					AlarmLightMaxBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
-					break;
-
-				case 'L': // Lights
-					sscanf(&command[1], "%d\r\n", (unsigned int*)&tempUchar); // App sends a brightness percentage (0-100).
-					printf("Received percentage = %d, setting brightness = %lu \r\n", tempUchar, ((unsigned long)tempUchar * (lights_MaxBrightness / 100)));
-					lights_setBrightness((unsigned long)tempUchar * (lights_MaxBrightness / 100));
-
-					break;
-
-				case 'z': // Snoozzzzze Alarm
-					snoozeAlarm();
-					break;
-
-				case 'U': // I'm Up! Stop Alarm
-					stopAlarm();
-					break;
-
-				default:
-					break;
+					else {
+						sprintf(response + strlen(response), "7:00:00:00,");
+					}
 				}
+				sprintf(response + strlen(response) - 1, "\r\n"); // -1 to overwrite the last comma.
+
+				uartBt_send((unsigned char*)response, strlen(response));
+				break;
+
+			case 'A': // Set Alarms
+				printf("Setting Alarm\n\r");
+				// We always receive 7 time-values from the Android app in the same format as "Set Time".
+				// The app will set an invalid time-value in the alarm-slot it want's to be Off. This is checked using the day-field.
+				offset = 0;
+				numberOfAlarms = 0;
+
+				// Parse 7 time-values in the format day:hour:minute:seconds separated by commas ','.
+				for(i=0; i<7; i++) {
+					sscanf(&command[1] + offset, "%[^,]", tempString);
+					printf("Alarm String %d = %s\n\r", i, tempString);
+					sscanf(tempString, "%d:%02d:%02d:%02d", &(alarms[numberOfAlarms].day), &(alarms[numberOfAlarms].hour), &(alarms[numberOfAlarms].minute), &(alarms[numberOfAlarms].second));
+					printf("%d : %d, %d, %d, %d\n\r", numberOfAlarms, alarms[numberOfAlarms].day, alarms[numberOfAlarms].hour, alarms[numberOfAlarms].minute, alarms[numberOfAlarms].second);
+					if(alarms[numberOfAlarms].day <= saturday) { // Ignore the alarm if the day-value is out-of-range
+						numberOfAlarms++;
+					}
+					offset += strlen(tempString) + 1;
+				}
+
+				time_setAlarms(alarms, numberOfAlarms);
+				break;
+
+			case 'B': // Set maximum alarm-Brightness and delay
+				sscanf(&command[1], "%d,%lu\r\n", (unsigned int*)&tempUchar, &AlaramBrightnessDelay); // App sends a brightness percentage (0-100).
+				AlarmLightMaxBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
+				break;
+
+			case 'L': // Lights
+				sscanf(&command[1], "%d\r\n", (unsigned int*)&tempUchar); // App sends a brightness percentage (0-100).
+				printf("Received percentage = %d, setting brightness = %lu \r\n", tempUchar, ((unsigned long)tempUchar * (lights_MaxBrightness / 100)));
+				lights_setBrightness((unsigned long)tempUchar * (lights_MaxBrightness / 100));
+
+				break;
+
+			case 'z': // Snoozzzzze Alarm -- not used by Android App yet.
+				snoozeAlarm();
+				break;
+
+			case 'U': // I'm Up! Stop Alarm -- not used by Android App yet.
+				stopAlarm();
+				break;
+
+			default:
+				break;
 			}
+		}
 
-			// Poll the snooze button. If pressed, wait 1-second and poll again.
-			// Still-pressed = alarm-off, else snooze.
-			if(buttons_poll() != 0) {
-				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
-				if(buttons_poll() != 0) {
-					stopAlarm();
-				}
-				else {
-					snoozeAlarm();
-				}
-			}
-
-			if(AlarmLightBrightness!=0 && AlarmLightBrightness<=AlarmLightMaxBrightness) {
-				if(AlarmBrightnessDelay != 0) {
-					AlarmBrightnessDelay--;
-				}
-				else {
-					AlarmBrightnessDelay = ALARM_BRIGHTNESS_DELAY;
-					AlarmLightBrightness += ALARM_BRIGHTNESS_INCREMENT;
-					lights_setBrightness(AlarmLightBrightness);
-				}
-			}
-
-			if(time_checkAlarm() != false) {
+		if(time_checkAlarm() != false) {
+			if(AlarmState == off) {
+				printf("alarm starting \n\r");
+				AlarmState = lightsOn;
 				AlarmLightBrightness = 1;
 				lights_setBrightness(AlarmLightBrightness);
-				sound_play();
 			}
+			else if(AlarmState == snoozed) {
+				printf("alarm resuming from snooze \n\r");
+				AlarmState = lightsOn;
+				// TODO: Choose what to do if user snoozed when the sound wasn't playing:
+				// Go to full-brightness and alarm-sound straight away or continue with gradual wake-up?
+				//AlarmLightBrightness = AlarmLightMaxBrightness;
+				//lights_setBrightness(AlarmLightBrightness);
+				//sound_play();
+				//AlarmState = playingSound;
+			}
+		}
+
+		if(AlarmState!=off && AlarmLightBrightness<=AlarmLightMaxBrightness) {
+			if(AlarmBrightnessDelay != 0) {
+				AlarmBrightnessDelay--;
+			}
+			else {
+				AlarmBrightnessDelay = AlaramBrightnessDelay;
+				AlarmLightBrightness += ALARM_BRIGHTNESS_INCREMENT;
+				lights_setBrightness(AlarmLightBrightness);
+			}
+		}
+
+		// Start playing alarm-sound once lights reach full-brightness.
+		if(AlarmLightBrightness>=AlarmLightMaxBrightness && AlarmState==lightsOn) {
+			sound_play();
+			time_get(&AlarmStartTime);
+			AlarmState = playingSound;
+		}
+
+		// Don't play the alarm forever. If I don't wake-up after 10-minutes of alarm-sound, I'm not home.
+		time_get(&TempTime);
+		if((TempTime.rawTime - AlarmStartTime.rawTime > ALARM_TIMEOUT_SECONDS) && AlarmState==playingSound) {
+			printf("Stopping alarm due to timeout\n\r");
+			stopAlarm();
+		}
+
+		// Poll the snooze button. If pressed, wait 1-second and poll again.
+		// Still-pressed = alarm-off, else snooze.
+		if((buttons_poll() & BUTTONS_SNOOZE_PIN) != 0) {
+			ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
+			if((buttons_poll() & BUTTONS_SNOOZE_PIN) != 0) {
+				printf("Stopping alarm due to button\n\r");
+				stopAlarm();
+			}
+			else {
+				snoozeAlarm();
+			}
+		}
+
+
+		time_printCurrent();
+
 	}
 
 	return 0;

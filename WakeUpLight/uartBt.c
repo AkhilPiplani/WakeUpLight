@@ -45,9 +45,11 @@ void ISR_uartBt(void) {
 
 		if(byte == '\n' || commandSize==UARTBT_BUFFER_SIZE) { // \r is used to indicate end-of-command
 			if((CurrentCommandByte>CommandBuffer || CurrentCommandByte>(CommandBuffer + UARTBT_BUFFER_SIZE)) && *(CurrentCommandByte-1)=='\r') {
+				// Command ended with \r\n
 				LastCommandSize = commandSize - 1;
 			}
 			else {
+				// Command ended with \n\r
 				LastCommandSize = commandSize;
 			}
 
@@ -112,6 +114,8 @@ unsigned long uartBt_receive(unsigned char *data) {
 		else {
 			memcpy(data, (const void*)CommandBuffer, LastCommandSize);
 		}
+
+		data[LastCommandSize] = 0; // Null terminate the command.
 
 		NewCommandArrived = false;
 		return LastCommandSize;
