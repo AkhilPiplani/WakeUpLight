@@ -80,47 +80,30 @@ void time_get(Time *time) {
 	}
 }
 
-static void uCharToSting(unsigned char num, char *strEnd) {
-	while(num > 0) {
-		*strEnd = num%10 + '0';
-		strEnd--;
-		num /= 10;
-	}
-}
-
 static void buildTimeString(Time *time, char *timeString) {
-	char blankTimeString[] = "   0:00:00,    ";
-	memcpy(timeString, blankTimeString, sizeof(blankTimeString));
-
-	uCharToSting(time->hour, timeString+3);
-	uCharToSting(time->minute, timeString+6);
-	uCharToSting(time->second, timeString+9);
+	sprintf(timeString, "   %02hhu:%02hhu:%02hhu, ", time->hour, time->minute, time->second);
 
 	switch(time->day) {
 	case sunday:
-		timeString[12] = 'S';
-		timeString[13] = 'u';
+		strcat(timeString, "Su ");
 		break;
 	case monday:
-		timeString[12] = 'M';
+		strcat(timeString, "M  ");
 		break;
 	case tuesday:
-		timeString[12] = 'T';
-		timeString[13] = 'u';
+		strcat(timeString, "Tu ");
 		break;
 	case wednesday:
-		timeString[12] = 'W';
+		strcat(timeString, "W  ");
 		break;
 	case thursday:
-		timeString[12] = 'T';
-		timeString[13] = 'h';
+		strcat(timeString, "Th ");
 		break;
 	case friday:
-		timeString[12] = 'F';
+		strcat(timeString, "F  ");
 		break;
 	case saturday:
-		timeString[12] = 'S';
-		timeString[13] = 'a';
+		strcat(timeString, "Sa ");
 		break;
 	default:
 		break;
@@ -135,7 +118,7 @@ void time_printCurrent() {
 
 	if(currentTime.rawTime != lastTime.rawTime) {
 		buildTimeString(&currentTime, currentTimeString);
-		printf("%s \n\r", currentTimeString);
+		printf("%s \r\n", currentTimeString);
 		lastTime.rawTime = currentTime.rawTime;
 	}
 }
@@ -150,7 +133,7 @@ int time_setAlarms(Time *time, unsigned long numberOfAlarms) {
 	memcpy(AlarmTimes, time, numberOfAlarms*sizeof(Time));
 	for(i=0; i<numberOfAlarms; i++) {
 		AlarmTimes[i].rawTime = AlarmTimes[i].second + 60*AlarmTimes[i].minute + 3600*AlarmTimes[i].hour + SECONDS_IN_A_DAY*AlarmTimes[i].day;
-		printf("Setting alarm at raw-time: %lu\n\r", AlarmTimes[i].rawTime);
+		printf("Setting alarm at raw-time: %lu\r\n", AlarmTimes[i].rawTime);
 	}
 
 	NumberOfAlarms = numberOfAlarms;

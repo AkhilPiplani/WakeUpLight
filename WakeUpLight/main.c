@@ -82,7 +82,7 @@ static void performTests() {
 			brightness = 0;
 		}
 
-		printf("%lu \n\r", brightness);
+		printf("%lu \r\n", brightness);
 #elif UARTBT_LOOPBACK_TEST
 		// This test needs Rx and Tx pins to be shorted
 		uartBt_send((unsigned char *)helloBluetooth, (unsigned long)strlen(helloBluetooth));
@@ -104,10 +104,10 @@ static void performTests() {
 		}
 #elif BUTTONS_TEST
 #if SIMPLIFIED_BUTTONS
-		printf("%lu \n\r", buttons_poll());
+		printf("%lu \r\n", buttons_poll());
 #else
 		buttons_poll();
-		printf("%d%d%d %d%d%d \n\r", Buttons_States[0], Buttons_States[1], Buttons_States[2], Buttons_States[3], Buttons_States[4], Buttons_States[5]);
+		printf("%d%d%d %d%d%d \r\n", Buttons_States[0], Buttons_States[1], Buttons_States[2], Buttons_States[3], Buttons_States[4], Buttons_States[5]);
 #endif
 #elif SOUND_TEST
 		sound_init();
@@ -187,7 +187,7 @@ void ISR_sysTick() {
 }
 
 static void snoozeAlarm() {
-	printf("snoozeAlarm\n\r");
+	printf("snoozeAlarm\r\n");
 
 	if(AlarmState == off) {
 		lights_setBrightness(0);
@@ -205,7 +205,7 @@ static void snoozeAlarm() {
 }
 
 static void stopAlarm() {
-	printf("stopAlarm\n\r");
+	printf("stopAlarm\r\n");
 	lights_setBrightness(0);
 	AlarmLightBrightness = 0;
 	sound_stop();
@@ -240,9 +240,9 @@ int main(void) {
 	calculateAlarmLightIncrement(alarmLightTimeToMax);
 
 #ifdef __OPTIMIZE__
-	printf("\n\r -- Compiled on %s %s in Release mode --\r\n", __DATE__, __TIME__);
+	printf("\r\n -- Compiled on %s %s in Release mode --\r\n", __DATE__, __TIME__);
 #else
-	printf("\n\r -- Compiled on %s %s in Debug mode --\r\n",   __DATE__, __TIME__);
+	printf("\r\n -- Compiled on %s %s in Debug mode --\r\n",   __DATE__, __TIME__);
 #endif
 
 #if ENABLE_TESTS
@@ -266,7 +266,7 @@ int main(void) {
 				break;
 
 			case 'T': // Set Time
-				printf("Setting Time\n\r");
+				printf("Setting Time\r\n");
 				sscanf(&command[1], "%hhu:%02hhu:%02hhu:%02hhu\r\n", &(TempTime.day), &(TempTime.hour), &(TempTime.minute), &(TempTime.second));
 				time_set(&TempTime);
 				break;
@@ -289,7 +289,7 @@ int main(void) {
 				break;
 
 			case 'A': // Set Alarms
-				printf("Setting Alarm\n\r");
+				printf("Setting Alarm\r\n");
 				// We always receive 7 time-values from the Android app in the same format as "Set Time".
 				// The app will set an invalid time-value in the alarm-slot it want's to be Off. This is checked using the day-field.
 				offset = 0;
@@ -298,9 +298,9 @@ int main(void) {
 				// Parse 7 time-values in the format day:hour:minute:seconds separated by commas ','.
 				for(i=0; i<7; i++) {
 					sscanf(&command[1] + offset, "%[^,]", tempString);
-					printf("Alarm String %d = %s\n\r", i, tempString);
+					printf("Alarm String %d = %s\r\n", i, tempString);
 					sscanf(tempString, "%hhu:%02hhu:%02hhu:%02hhu", &(alarms[numberOfAlarms].day), &(alarms[numberOfAlarms].hour), &(alarms[numberOfAlarms].minute), &(alarms[numberOfAlarms].second));
-					printf("%lu : %hhu, %hhu, %hhu, %hhu\n\r", numberOfAlarms, alarms[numberOfAlarms].day, alarms[numberOfAlarms].hour, alarms[numberOfAlarms].minute, alarms[numberOfAlarms].second);
+					printf("%lu : %hhu, %hhu, %hhu, %hhu\r\n", numberOfAlarms, alarms[numberOfAlarms].day, alarms[numberOfAlarms].hour, alarms[numberOfAlarms].minute, alarms[numberOfAlarms].second);
 					if(alarms[numberOfAlarms].day <= saturday) { // Ignore the alarm if the day-value is out-of-range
 						numberOfAlarms++;
 					}
@@ -318,9 +318,19 @@ int main(void) {
 
 			case 'L': // Lights
 				sscanf(&command[1], "%hhu\r\n", &tempUchar); // App sends a brightness percentage (0-100).
-				lightBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
-				printf("Received percentage = %hhu, setting brightness = %lu \r\n", tempUchar, lightBrightness);
-				lights_setBrightness(lightBrightness);
+				if(tempUchar != 0) {
+					lightBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
+					lights_setBrightness(lightBrightness);
+					printf("Received percentage = %hhu, setting brightness = %lu \r\n", tempUchar, lightBrightness);
+				}
+				else {
+					// The button is used to toggle the light on-off as well.
+					// Only store the on-state brightness so that it can be used when button is used to switch lights-on.
+					lights_setBrightness(0);
+					printf("Received percentage = %hhu, setting brightness = 0 \r\n", tempUchar);
+				}
+
+
 
 				break;
 
@@ -339,13 +349,13 @@ int main(void) {
 
 		if(time_checkAlarm() != false) {
 			if(AlarmState == off) {
-				printf("alarm starting \n\r");
+				printf("alarm starting \r\n");
 				AlarmState = lightsOn;
 				AlarmLightBrightness = lights_MaxBrightness / 16;
 				lights_setBrightness(AlarmLightBrightness);
 			}
 			else if(AlarmState == snoozed) {
-				printf("alarm resuming from snooze \n\r");
+				printf("alarm resuming from snooze \r\n");
 				AlarmState = lightsOn;
 				// TODO: Choose what to do if user snoozed when the sound wasn't playing:
 				// Go to full-brightness and alarm-sound straight away or continue with gradual wake-up?
@@ -366,7 +376,7 @@ int main(void) {
 		// Don't play the alarm forever. If I don't wake-up after 10-minutes of alarm-sound, I'm not home.
 		time_get(&TempTime);
 		if((TempTime.rawTime - alarmStartTime.rawTime > ALARM_TIMEOUT_SECONDS) && AlarmState==playingSound) {
-			printf("Stopping alarm due to timeout\n\r");
+			printf("Stopping alarm due to timeout\r\n");
 			stopAlarm();
 		}
 
@@ -377,7 +387,7 @@ int main(void) {
 			if(AlarmState != off) {
 				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
 				if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
-					printf("Stopping alarm due to button\n\r");
+					printf("Stopping alarm due to button\r\n");
 					stopAlarm();
 				}
 				else {

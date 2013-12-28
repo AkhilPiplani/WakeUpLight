@@ -36,7 +36,7 @@ int _kill(int pid, int sig) {
 }
 
 void _exit(int status) {
-	_write(1, "exit\n\r", 6);
+	_write(1, "exit\r\n", 6);
 	_kill(status, -1);
 	while (1) {
 	} /* Make sure we hang here */
@@ -69,7 +69,7 @@ caddr_t _sbrk(int incr) {
 
 	prev_heap_end = heap_end;
 	if (heap_end + incr > stack_ptr) {
-		// write(1, "Heap and stack collision\n", 25);
+		// write(1, "Heap and stack collision\r\n", 25);
 		// abort();
 		errno = ENOMEM;
 		return (caddr_t) -1;

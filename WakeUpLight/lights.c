@@ -98,7 +98,7 @@ void lights_printACfrequency() {
 	while(1) {
 		time_get(&time);
 		if(time.second != lastTime.second) {
-			printf("%u %u \n\r", ZeroCrossingCount, time.second);
+			printf("%u %u \r\n", ZeroCrossingCount, time.second);
 			lastTime = time;
 			ZeroCrossingCount = 0;
 		}
