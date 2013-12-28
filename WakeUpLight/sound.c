@@ -21,6 +21,8 @@
 #include "alarmSound.h"
 #include "sound.h"
 
+#define SOUND_MUTED		1
+
 #define SOUND_ELEMENTS 		ALARM_SOUND_ELEMENTS
 #define SOUND_SAMPLE_RATE	ALARM_SOUND_SAMPLE_RATE
 #define SOUND_BITDEPTH		ALARM_SOUND_BITDEPTH
@@ -48,6 +50,8 @@ void sound_init() {
 }
 
 void sound_play() {
+#if SOUND_MUTED==0
+
 	SoundIndex = 0;
 
 	// Enable the amplifier
@@ -71,6 +75,7 @@ void sound_play() {
 
 	// Synchronize the two timers.
 	TimerSynchronize(TIMER0_BASE, SOUND_TIMERS_SYNC); // The first argument must be TIMER0_BASE.
+#endif
 }
 
 void sound_stop() {

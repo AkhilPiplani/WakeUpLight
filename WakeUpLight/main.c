@@ -398,6 +398,9 @@ int main(void) {
 					}
 				}
 			}
+
+			// Wait for the button to be released, otherwise the light will keep toggling.
+			while((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0);
 		}
 
 
