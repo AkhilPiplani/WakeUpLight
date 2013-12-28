@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <inc/hw_ints.h>
@@ -15,6 +16,7 @@
 #include <driverlib/pin_map.h>
 #include <driverlib/sysctl.h>
 #include <driverlib/systick.h>
+#include <driverlib/interrupt.h>
 #include <driverlib/rom.h>
 #include <driverlib/uart.h>
 #include <driverlib/gpio.h>
@@ -49,12 +51,12 @@
 #define SOUND_TEST				0
 
 static void uartDebug_init() {
-    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
-    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
-    ROM_GPIOPinConfigure(GPIO_PA0_U0RX);
-    ROM_GPIOPinConfigure(GPIO_PA1_U0TX);
-    ROM_GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
-    ROM_UARTConfigSetExpClk(UART0_BASE, ROM_SysCtlClockGet(), 115200, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
+	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+	ROM_GPIOPinConfigure(GPIO_PA0_U0RX);
+	ROM_GPIOPinConfigure(GPIO_PA1_U0TX);
+	ROM_GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+	ROM_UARTConfigSetExpClk(UART0_BASE, ROM_SysCtlClockGet(), 115200, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
 }
 
 #if ENABLE_TESTS
@@ -122,30 +124,45 @@ static void performTests() {
 }
 #endif
 
+
+#define SYSTICK_FREQUENCY_HZ	10
+void ISR_sysTick();
+
+static void systick_init() {
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / SYSTICK_FREQUENCY_HZ); // 10Hz frequency of Sys-Tick interrupt.
+	ROM_SysTickEnable();
+
+	// Interrupt priorities are from 0(highest) to 7(lowest).
+	// The register only uses the top 3 bits of a byte so shifted up by 5.
+	// Default priority for an interrupt is 0(highest).
+	IntPrioritySet(FAULT_SYSTICK, 7<<5);
+
+	SysTickIntRegister(ISR_sysTick);
+	ROM_SysTickIntEnable();
+}
+
 static void initSystem() {
 	ROM_FPUStackingDisable(); // Disable the Lazy Stacking of FPU registers. This reduces ISR latency but makes using FPU in ISR dangerous.
 	ROM_SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN); // 400MHz / 2 / 2.5 (SYSCTL_SYSDIV_2_5) = 80MHz
 
-    ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1000); // 1mS period of Sys-Tick interrupt.
-    ROM_SysTickEnable();
-    ROM_IntMasterEnable();
+	ROM_IntMasterEnable();
 
-    uartDebug_init(); // Used for printf.
-    
-    //uartBt_init(9600); 
-    //uartBt_oneTimeSetup();
-    
-    uartBt_init(115200); // Used for bluetooth communication with Android App.
-    //lcd_init(); // Not used anymore
-    
-    buttons_init();
+	systick_init(); // periodic interrupt used for timing such as slowly increasing the light-brightness for alarm.
+	uartDebug_init(); // Used for printf.
+
+	//uartBt_init(9600);
+	//uartBt_oneTimeSetup();
+
+	uartBt_init(115200); // Used for bluetooth communication with Android App.
+	//lcd_init(); // Not used anymore
+
+	buttons_init();
 	time_init();
 	lights_init();
 	sound_init();
 	ROM_IntMasterEnable();
 }
 
-#define ALARM_BRIGHTNESS_INCREMENT	1
 #define ALARM_TIMEOUT_SECONDS		600
 
 typedef enum _AlarmStatus {
@@ -155,9 +172,19 @@ typedef enum _AlarmStatus {
 	playingSound
 } AlarmStatus;
 
-static unsigned long AlarmLightBrightness = 0, AlarmBrightnessDelay = 0, AlarmLightMaxBrightness = 0xFFFFFFFF, AlaramBrightnessDelay = 0;
-static Time TempTime, AlarmStartTime;
+static unsigned long AlarmLightBrightness = 0, AlarmLightMaxBrightness = 0xFFFFFFFF, AlarmLightIncrement = 1;
+static Time TempTime;
 AlarmStatus AlarmState = off;
+
+volatile unsigned long TickCount = 0;
+
+void ISR_sysTick() {
+	TickCount++;
+	if(AlarmState!=off && AlarmLightBrightness<=AlarmLightMaxBrightness) {
+		AlarmLightBrightness += AlarmLightIncrement;
+		lights_setBrightness(AlarmLightBrightness);
+	}
+}
 
 static void snoozeAlarm() {
 	printf("snoozeAlarm\n\r");
@@ -169,8 +196,8 @@ static void snoozeAlarm() {
 	else {
 		time_get(&TempTime);
 		time_setSnoozeAlarm(TempTime.rawTime + 10*60);
-	//	lights_setBrightness(0);
-	//	AlarmLightBrightness = 0;
+		// lights_setBrightness(0);
+		// AlarmLightBrightness = 0;
 		AlarmState = snoozed;
 	}
 
@@ -186,19 +213,31 @@ static void stopAlarm() {
 	time_clearSnoozeAlarm();
 }
 
+static void calculateAlarmLightIncrement(unsigned char alarmLightTimeToMax) {
+	AlarmLightIncrement = AlarmLightMaxBrightness / ((unsigned long)alarmLightTimeToMax * 60 * SYSTICK_FREQUENCY_HZ);
+
+	if(AlarmLightIncrement == 0) { // Round up when necessary.
+		AlarmLightIncrement = 1;
+	}
+}
+
 int main(void) {
 	char command[UARTBT_MAX_COMMAND_SIZE]  = {0};
 	char response[UARTBT_MAX_COMMAND_SIZE] = {0};
 	char tempString[UARTBT_MAX_COMMAND_SIZE] = {0};
 	unsigned char tempUchar;
+	unsigned char alarmLightTimeToMax = 15; // in minutes
 	unsigned int offset, i;
-	unsigned long numberOfAlarms, echoCount = 0;
-	Time alarms[7];
+	unsigned long numberOfAlarms, echoCount = 0, lightBrightness;
+	Time alarms[7], alarmStartTime;
+	bool lightOn = false;
 
 	initSystem();
 
 	// For now, use the maximum-lights-brightness for the alarm, this can be user-settable in future.
 	AlarmLightMaxBrightness = lights_MaxBrightness;
+	lightBrightness = lights_MaxBrightness;
+	calculateAlarmLightIncrement(alarmLightTimeToMax);
 
 #ifdef __OPTIMIZE__
 	printf("\n\r -- Compiled on %s %s in Release mode --\r\n", __DATE__, __TIME__);
@@ -222,13 +261,13 @@ int main(void) {
 			switch(command[0]) { // Set command bytes are Capitalized, get are not.
 			case 't': // get Time -- not used by Android App yet.
 				time_get(&TempTime);
-				sprintf(response, "%d:%02d:%02d:%02d\r\n", TempTime.day, TempTime.hour, TempTime.minute, TempTime.second);
+				sprintf(response, "%hhu:%02hhu:%02hhu:%02hhu\r\n", TempTime.day, TempTime.hour, TempTime.minute, TempTime.second);
 				uartBt_send((unsigned char*)response, strlen(response));
 				break;
 
 			case 'T': // Set Time
 				printf("Setting Time\n\r");
-				sscanf(&command[1], "%d:%02d:%02d:%02d\r\n", &(TempTime.day), &(TempTime.hour), &(TempTime.minute), &(TempTime.second));
+				sscanf(&command[1], "%hhu:%02hhu:%02hhu:%02hhu\r\n", &(TempTime.day), &(TempTime.hour), &(TempTime.minute), &(TempTime.second));
 				time_set(&TempTime);
 				break;
 
@@ -238,7 +277,7 @@ int main(void) {
 
 				for(i=0; i<7; i++) {
 					if(i < numberOfAlarms) {
-						sprintf(response + strlen(response), "%d:%02d:%02d:%02d,", alarms[i].day, alarms[i].hour, alarms[i].minute, alarms[i].second);
+						sprintf(response + strlen(response), "%hhu:%02hhu:%02hhu:%02hhu,", alarms[i].day, alarms[i].hour, alarms[i].minute, alarms[i].second);
 					}
 					else {
 						sprintf(response + strlen(response), "7:00:00:00,");
@@ -260,8 +299,8 @@ int main(void) {
 				for(i=0; i<7; i++) {
 					sscanf(&command[1] + offset, "%[^,]", tempString);
 					printf("Alarm String %d = %s\n\r", i, tempString);
-					sscanf(tempString, "%d:%02d:%02d:%02d", &(alarms[numberOfAlarms].day), &(alarms[numberOfAlarms].hour), &(alarms[numberOfAlarms].minute), &(alarms[numberOfAlarms].second));
-					printf("%d : %d, %d, %d, %d\n\r", numberOfAlarms, alarms[numberOfAlarms].day, alarms[numberOfAlarms].hour, alarms[numberOfAlarms].minute, alarms[numberOfAlarms].second);
+					sscanf(tempString, "%hhu:%02hhu:%02hhu:%02hhu", &(alarms[numberOfAlarms].day), &(alarms[numberOfAlarms].hour), &(alarms[numberOfAlarms].minute), &(alarms[numberOfAlarms].second));
+					printf("%lu : %hhu, %hhu, %hhu, %hhu\n\r", numberOfAlarms, alarms[numberOfAlarms].day, alarms[numberOfAlarms].hour, alarms[numberOfAlarms].minute, alarms[numberOfAlarms].second);
 					if(alarms[numberOfAlarms].day <= saturday) { // Ignore the alarm if the day-value is out-of-range
 						numberOfAlarms++;
 					}
@@ -272,14 +311,16 @@ int main(void) {
 				break;
 
 			case 'B': // Set maximum alarm-Brightness and delay
-				sscanf(&command[1], "%d,%lu\r\n", (unsigned int*)&tempUchar, &AlaramBrightnessDelay); // App sends a brightness percentage (0-100).
+				sscanf(&command[1], "%hhu,%hhu\r\n", &tempUchar, &alarmLightTimeToMax); // App sends a brightness percentage (0-100).
 				AlarmLightMaxBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
+				calculateAlarmLightIncrement(alarmLightTimeToMax);
 				break;
 
 			case 'L': // Lights
-				sscanf(&command[1], "%d\r\n", (unsigned int*)&tempUchar); // App sends a brightness percentage (0-100).
-				printf("Received percentage = %d, setting brightness = %lu \r\n", tempUchar, ((unsigned long)tempUchar * (lights_MaxBrightness / 100)));
-				lights_setBrightness((unsigned long)tempUchar * (lights_MaxBrightness / 100));
+				sscanf(&command[1], "%hhu\r\n", &tempUchar); // App sends a brightness percentage (0-100).
+				lightBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
+				printf("Received percentage = %hhu, setting brightness = %lu \r\n", tempUchar, lightBrightness);
+				lights_setBrightness(lightBrightness);
 
 				break;
 
@@ -315,41 +356,47 @@ int main(void) {
 			}
 		}
 
-		if(AlarmState!=off && AlarmLightBrightness<=AlarmLightMaxBrightness) {
-			if(AlarmBrightnessDelay != 0) {
-				AlarmBrightnessDelay--;
-			}
-			else {
-				AlarmBrightnessDelay = AlaramBrightnessDelay;
-				AlarmLightBrightness += ALARM_BRIGHTNESS_INCREMENT;
-				lights_setBrightness(AlarmLightBrightness);
-			}
-		}
-
 		// Start playing alarm-sound once lights reach full-brightness.
 		if(AlarmLightBrightness>=AlarmLightMaxBrightness && AlarmState==lightsOn) {
 			sound_play();
-			time_get(&AlarmStartTime);
+			time_get(&alarmStartTime);
 			AlarmState = playingSound;
 		}
 
 		// Don't play the alarm forever. If I don't wake-up after 10-minutes of alarm-sound, I'm not home.
 		time_get(&TempTime);
-		if((TempTime.rawTime - AlarmStartTime.rawTime > ALARM_TIMEOUT_SECONDS) && AlarmState==playingSound) {
+		if((TempTime.rawTime - alarmStartTime.rawTime > ALARM_TIMEOUT_SECONDS) && AlarmState==playingSound) {
 			printf("Stopping alarm due to timeout\n\r");
 			stopAlarm();
 		}
 
 		// Poll the snooze button. If pressed, wait 1-second and poll again.
 		// Still-pressed = alarm-off, else snooze.
-		if((buttons_poll() & BUTTONS_SNOOZE_PIN) != 0) {
-			ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
-			if((buttons_poll() & BUTTONS_SNOOZE_PIN) != 0) {
-				printf("Stopping alarm due to button\n\r");
-				stopAlarm();
+		// If the alarm is not active, use the button to toggle light on/off
+		if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
+			if(AlarmState != off) {
+				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
+				if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
+					printf("Stopping alarm due to button\n\r");
+					stopAlarm();
+				}
+				else {
+					snoozeAlarm();
+				}
 			}
 			else {
-				snoozeAlarm();
+				// Wait 1/10th of a second and poll again.
+				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 30);  // Each SysCtlDelay is about 3 clocks.
+				if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
+					if(lightOn == false) {
+						lights_setBrightness(lightBrightness);
+						lightOn = true;
+					}
+					else {
+						lights_setBrightness(0);
+						lightOn = false;
+					}
+				}
 			}
 		}
 

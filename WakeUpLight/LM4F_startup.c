@@ -71,26 +71,26 @@ __attribute__ ((section(".nvic_table")))
 void(* vectorTable[])(void) = {
 	// This are the fixed priority interrupts and the stack pointer loaded at startup at R13 (SP).
 	//												VECTOR N (Check Datasheet)
-    (void (*)) &_stack_top,
-    						// stack pointer should be 
+	(void (*)) &_stack_top,
+							// stack pointer should be
 							// placed here at startup.			0
-    rst_handler,			// code entry point					1
-    nmi_handler,			// NMI handler.						2
-    hardfault_handler,		// hard fault handler.				3
-    // Configurable priority interruts handler start here.
-    empty_def_handler,		// Memory Management Fault			4
-    empty_def_handler,		// Bus Fault						5
-    empty_def_handler,		// Usage Fault 						6
-    0,						// Reserved							7
-    0,						// Reserved							8
-    0,						// Reserved							9
-    0,						// Reserved							10
-    empty_def_handler,		// SV call							11
-    empty_def_handler,		// Debug monitor					12
-    0,						// Reserved							13
-    empty_def_handler,		// PendSV							14
-    empty_def_handler,		// SysTick							15
-    // Peripherial interrupts start here.
+	rst_handler,			// code entry point					1
+	nmi_handler,			// NMI handler.						2
+	hardfault_handler,		// hard fault handler.				3
+	// Configurable priority interruts handler start here.
+	empty_def_handler,		// Memory Management Fault			4
+	empty_def_handler,		// Bus Fault						5
+	empty_def_handler,		// Usage Fault 						6
+	0,						// Reserved							7
+	0,						// Reserved							8
+	0,						// Reserved							9
+	0,						// Reserved							10
+	empty_def_handler,		// SV call							11
+	empty_def_handler,		// Debug monitor					12
+	0,						// Reserved							13
+	empty_def_handler,		// PendSV							14
+	empty_def_handler,		// SysTick							15
+	// Peripherial interrupts start here.
 	empty_def_handler,		// GPIO Port A						16
 	empty_def_handler,		// GPIO Port B						17
 	empty_def_handler,		// GPIO Port C						18
@@ -244,31 +244,30 @@ void(* vectorTable[])(void) = {
 * 0 to the .bss segment 
 */
 	
-void rst_handler(void){	
+void rst_handler(void) {
 	// Copy the .data section pointers to ram from flash.
 	// Look at LD manual (Optional Section Attributes).
-	
+
 	// source and destination pointers
 	unsigned long *src;
 	unsigned long *dest;
-	
+
 	//this should be good!
 	src = &_data_load;
 	dest = &_start_data;
-	
+
 	//this too
-    while(dest < &_end_data)
-    {
-        *dest++ = *src++;
-    }
-	
-    // now set the .bss segment to 0!
-    dest = &_start_bss;
-	while(dest < &_end_bss){
+	while(dest < &_end_data) {
+		*dest++ = *src++;
+	}
+
+	// now set the .bss segment to 0!
+	dest = &_start_bss;
+	while(dest < &_end_bss) {
 		*dest++ = 0;
 	}
-	
-    HWREG(NVIC_CPAC) = ((HWREG(NVIC_CPAC) & ~(NVIC_CPAC_CP10_M | NVIC_CPAC_CP11_M)) | NVIC_CPAC_CP10_FULL | NVIC_CPAC_CP11_FULL);
+
+	HWREG(NVIC_CPAC) = ((HWREG(NVIC_CPAC) & ~(NVIC_CPAC_CP10_M | NVIC_CPAC_CP11_M)) | NVIC_CPAC_CP10_FULL | NVIC_CPAC_CP11_FULL);
 
 	// after setting copying .data to ram and "zero-ing" .bss we are good
 	// to start the main() method!
@@ -277,22 +276,22 @@ void rst_handler(void){
 }
 
 // NMI Exception handler code NVIC 2
-void nmi_handler(void){
+void nmi_handler(void) {
 	// Just loop forever, so if you want to debug the processor it's running.
-    while(1){
+    while(1) {
     }
 }
 
 // Hard fault handler code NVIC 3
 void hardfault_handler(void){
 	// Just loop forever, so if you want to debug the processor it's running.
-    while(1){
+    while(1) {
     }
 }
 
 // Empty handler used as default.
 void empty_def_handler(void){
 	// Just loop forever, so if you want to debug the processor it's running.
-    while(1){
+    while(1) {
     }
 }

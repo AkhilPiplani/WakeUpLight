@@ -150,7 +150,7 @@ int time_setAlarms(Time *time, unsigned long numberOfAlarms) {
 	memcpy(AlarmTimes, time, numberOfAlarms*sizeof(Time));
 	for(i=0; i<numberOfAlarms; i++) {
 		AlarmTimes[i].rawTime = AlarmTimes[i].second + 60*AlarmTimes[i].minute + 3600*AlarmTimes[i].hour + SECONDS_IN_A_DAY*AlarmTimes[i].day;
-		printf("Setting alarm at raw-time: %d\n\r", AlarmTimes[i].rawTime);
+		printf("Setting alarm at raw-time: %lu\n\r", AlarmTimes[i].rawTime);
 	}
 
 	NumberOfAlarms = numberOfAlarms;

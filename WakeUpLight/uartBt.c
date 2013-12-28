@@ -26,7 +26,7 @@ static volatile unsigned char CommandBuffer[UARTBT_BUFFER_SIZE*2] = {0}; // Doub
 static volatile unsigned char *CurrentCommandStartPointer = CommandBuffer;
 static volatile unsigned char *CurrentCommandByte = CommandBuffer;
 static volatile unsigned long LastCommandSize = 0;
-static tBoolean NewCommandArrived = false;
+static volatile tBoolean NewCommandArrived = false;
 
 void ISR_uartBt(void) {
 	unsigned long status;
@@ -93,8 +93,8 @@ void uartBt_init(unsigned long baudrate) {
 	// Configure the UART for the specified baud rate, 8-N-1 operation.
 	ROM_UARTConfigSetExpClk(UARTBT_BASE, ROM_SysCtlClockGet(), baudrate, (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
 	ROM_UARTFIFODisable(UARTBT_BASE); // FIFO disabled so that short commands come through immediately
-//	ROM_UARTFIFOEnable(UARTBT_BASE);
-//	ROM_UARTFIFOLevelSet(UARTBT_BASE, UART_FIFO_TX4_8, UART_FIFO_RX4_8);
+	// ROM_UARTFIFOEnable(UARTBT_BASE);
+	// ROM_UARTFIFOLevelSet(UARTBT_BASE, UART_FIFO_TX4_8, UART_FIFO_RX4_8);
 	UARTIntRegister(UARTBT_BASE, ISR_uartBt);
 	ROM_IntEnable(UARTBT_INTERRUPT);
 	ROM_UARTIntEnable(UARTBT_BASE, UART_INT_RX);

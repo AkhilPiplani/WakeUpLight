@@ -143,13 +143,13 @@ void lcd_BuildCustomCharacters() {
 
 void lcd_build(unsigned char location, unsigned char *ptr) {
 	unsigned char i;
-	if(location<8){
+	if(location < 8) {
 		lcd_command(0x40 + (location*8));
-		for(i=0;i<8;i++)
+		for(i=0; i<8; i++) {
 			lcd_write(ptr[i]);
+		}
 		lcd_command(0x80);
 	}
-
 }
 
 void lcd_writePos(unsigned char inputData, unsigned char row, unsigned char col) {

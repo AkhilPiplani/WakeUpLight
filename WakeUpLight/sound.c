@@ -27,7 +27,7 @@
 
 void ISR_soundSamples(void);
 
-volatile unsigned int SoundIndex = 0;
+static volatile unsigned int SoundIndex = 0;
 
 void sound_init() {
 	// Enable the relevant peripherals.
@@ -39,7 +39,7 @@ void sound_init() {
 	ROM_GPIOPinConfigure(SOUND_PINMAP_PWM);
 	ROM_GPIOPinTypeTimer(SOUND_PWM_PORT, SOUND_PWM_PIN);
 	ROM_GPIOPadConfigSet(SOUND_PWM_PORT, SOUND_PWM_PIN, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
-//	ROM_GPIOPadConfigSet(SOUND_PWM_PORT, SOUND_PWM_PIN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
+	// ROM_GPIOPadConfigSet(SOUND_PWM_PORT, SOUND_PWM_PIN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
 
 	// Set-up the shutdown pin and set it low.
 	ROM_SysCtlPeripheralEnable(SOUND_AMP_ENABLE_PORTENABLE);
@@ -55,7 +55,7 @@ void sound_play() {
 
 	ROM_TimerDisable(SOUND_PWM_TIMER, TIMER_A);
 	ROM_TimerConfigure(SOUND_PWM_TIMER, TIMER_CFG_SPLIT_PAIR | TIMER_CFG_A_PWM);
-//	HWREG(SOUND_PWM_TIMER + TIMER_O_CTL) |= 1<<14; // Enable PWM inversion.
+	// HWREG(SOUND_PWM_TIMER + TIMER_O_CTL) |= 1<<14; // Enable PWM inversion.
 	ROM_TimerLoadSet(SOUND_PWM_TIMER, TIMER_A,  (1<<SOUND_BITDEPTH) - 1);
 	ROM_TimerMatchSet(SOUND_PWM_TIMER, TIMER_A, 0); // Initial Duty-Cycle = 0
 	ROM_TimerEnable(SOUND_PWM_TIMER, TIMER_A);

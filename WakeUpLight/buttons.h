@@ -16,10 +16,10 @@
 
 #if SIMPLIFIED_BUTTONS
 
-#define BUTTONS_PORT			GPIO_PORTC_BASE
-#define BUTTONS_PORTENABLE		SYSCTL_PERIPH_GPIOC
-#define BUTTONS_SNOOZE_PIN		GPIO_PIN_7
-#define BUTTONS_ALL_PINS		BUTTONS_SNOOZE_PIN // Only one button for now, later can be logical OR of multiple buttons on the same port.
+#define BUTTONS_PORT						GPIO_PORTC_BASE
+#define BUTTONS_PORTENABLE					SYSCTL_PERIPH_GPIOC
+#define BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN	GPIO_PIN_7
+#define BUTTONS_ALL_PINS					BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN // Only one button for now, later can be logical OR of multiple buttons on the same port.
 
 void buttons_init();
 long buttons_poll();

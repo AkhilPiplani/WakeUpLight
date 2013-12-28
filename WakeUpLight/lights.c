@@ -24,8 +24,8 @@
 
 // This whole module generally assumes a 50Hz AC input.
 
-static unsigned int ZeroCrossingCount;
-static unsigned long DimmerTriggerDelay;
+static volatile unsigned int ZeroCrossingCount;
+static volatile unsigned long DimmerTriggerDelay;
 static unsigned long AChalfCycleTime;
 
 unsigned long lights_MaxBrightness;
