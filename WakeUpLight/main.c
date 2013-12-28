@@ -166,21 +166,31 @@ static void initSystem() {
 #define ALARM_TIMEOUT_SECONDS		600
 
 typedef enum _AlarmStatus {
-	off,
-	snoozed,
-	lightsOn,
-	playingSound
+	AlarmStatus_off = 0,
+	AlarmStatus_snoozed,
+	AlarmStatus_lightsOn,
+	AlarmStatus_playingSound
 } AlarmStatus;
+
+// The brightness levels are not linear with lights-delays.
+// The intermediate values in this enum give a good range of mood-lighting.
+typedef enum _ButtonLightBrigthness {
+	buttonLightBrightness_off = 0,
+	buttonLightBrightness_full,
+	buttonLightBrightness_60percent,
+	buttonLightBrightness_45percent,
+	buttonLightBrightness_37percent
+} ButtonLightBrigthness;
 
 static unsigned long AlarmLightBrightness = 0, AlarmLightMaxBrightness = 0xFFFFFFFF, AlarmLightIncrement = 1;
 static Time TempTime;
-AlarmStatus AlarmState = off;
+AlarmStatus AlarmState = AlarmStatus_off;
 
 volatile unsigned long TickCount = 0;
 
 void ISR_sysTick() {
 	TickCount++;
-	if(AlarmState!=off && AlarmLightBrightness<=AlarmLightMaxBrightness) {
+	if(AlarmState!=AlarmStatus_off && AlarmLightBrightness<=AlarmLightMaxBrightness) {
 		AlarmLightBrightness += AlarmLightIncrement;
 		lights_setBrightness(AlarmLightBrightness);
 	}
@@ -189,7 +199,7 @@ void ISR_sysTick() {
 static void snoozeAlarm() {
 	printf("snoozeAlarm\r\n");
 
-	if(AlarmState == off) {
+	if(AlarmState == AlarmStatus_off) {
 		lights_setBrightness(0);
 		AlarmLightBrightness = 0;
 	}
@@ -198,7 +208,7 @@ static void snoozeAlarm() {
 		time_setSnoozeAlarm(TempTime.rawTime + 10*60);
 		// lights_setBrightness(0);
 		// AlarmLightBrightness = 0;
-		AlarmState = snoozed;
+		AlarmState = AlarmStatus_snoozed;
 	}
 
 	sound_stop();
@@ -209,7 +219,7 @@ static void stopAlarm() {
 	lights_setBrightness(0);
 	AlarmLightBrightness = 0;
 	sound_stop();
-	AlarmState = off;
+	AlarmState = AlarmStatus_off;
 	time_clearSnoozeAlarm();
 }
 
@@ -230,7 +240,7 @@ int main(void) {
 	unsigned int offset, i;
 	unsigned long numberOfAlarms, echoCount = 0, lightBrightness;
 	Time alarms[7], alarmStartTime;
-	bool lightOn = false;
+	ButtonLightBrigthness buttonLightBrightness = buttonLightBrightness_off;
 
 	initSystem();
 
@@ -318,20 +328,9 @@ int main(void) {
 
 			case 'L': // Lights
 				sscanf(&command[1], "%hhu\r\n", &tempUchar); // App sends a brightness percentage (0-100).
-				if(tempUchar != 0) {
-					lightBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
-					lights_setBrightness(lightBrightness);
-					printf("Received percentage = %hhu, setting brightness = %lu \r\n", tempUchar, lightBrightness);
-				}
-				else {
-					// The button is used to toggle the light on-off as well.
-					// Only store the on-state brightness so that it can be used when button is used to switch lights-on.
-					lights_setBrightness(0);
-					printf("Received percentage = %hhu, setting brightness = 0 \r\n", tempUchar);
-				}
-
-
-
+				lightBrightness = (unsigned long)tempUchar * (lights_MaxBrightness / 100);
+				lights_setBrightness(lightBrightness);
+				printf("Received percentage = %hhu, setting brightness = %lu \r\n", tempUchar, lightBrightness);
 				break;
 
 			case 'z': // Snoozzzzze Alarm -- not used by Android App yet.
@@ -348,15 +347,15 @@ int main(void) {
 		}
 
 		if(time_checkAlarm() != false) {
-			if(AlarmState == off) {
+			if(AlarmState == AlarmStatus_off) {
 				printf("alarm starting \r\n");
-				AlarmState = lightsOn;
+				AlarmState = AlarmStatus_lightsOn;
 				AlarmLightBrightness = lights_MaxBrightness / 16;
 				lights_setBrightness(AlarmLightBrightness);
 			}
-			else if(AlarmState == snoozed) {
+			else if(AlarmState == AlarmStatus_snoozed) {
 				printf("alarm resuming from snooze \r\n");
-				AlarmState = lightsOn;
+				AlarmState = AlarmStatus_lightsOn;
 				// TODO: Choose what to do if user snoozed when the sound wasn't playing:
 				// Go to full-brightness and alarm-sound straight away or continue with gradual wake-up?
 				//AlarmLightBrightness = AlarmLightMaxBrightness;
@@ -367,15 +366,15 @@ int main(void) {
 		}
 
 		// Start playing alarm-sound once lights reach full-brightness.
-		if(AlarmLightBrightness>=AlarmLightMaxBrightness && AlarmState==lightsOn) {
+		if(AlarmLightBrightness>=AlarmLightMaxBrightness && AlarmState==AlarmStatus_lightsOn) {
 			sound_play();
 			time_get(&alarmStartTime);
-			AlarmState = playingSound;
+			AlarmState = AlarmStatus_playingSound;
 		}
 
 		// Don't play the alarm forever. If I don't wake-up after 10-minutes of alarm-sound, I'm not home.
 		time_get(&TempTime);
-		if((TempTime.rawTime - alarmStartTime.rawTime > ALARM_TIMEOUT_SECONDS) && AlarmState==playingSound) {
+		if((TempTime.rawTime - alarmStartTime.rawTime > ALARM_TIMEOUT_SECONDS) && AlarmState==AlarmStatus_playingSound) {
 			printf("Stopping alarm due to timeout\r\n");
 			stopAlarm();
 		}
@@ -384,7 +383,7 @@ int main(void) {
 		// Still-pressed = alarm-off, else snooze.
 		// If the alarm is not active, use the button to toggle light on/off
 		if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
-			if(AlarmState != off) {
+			if(AlarmState != buttonLightBrightness_off) {
 				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
 				if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
 					printf("Stopping alarm due to button\r\n");
@@ -398,13 +397,28 @@ int main(void) {
 				// Wait 1/10th of a second and poll again.
 				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 30);  // Each SysCtlDelay is about 3 clocks.
 				if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
-					if(lightOn == false) {
-						lights_setBrightness(lightBrightness);
-						lightOn = true;
-					}
-					else {
+					switch(buttonLightBrightness) {
+					case buttonLightBrightness_full:
+						lights_setBrightness(lights_MaxBrightness / 100 * 60);
+						buttonLightBrightness = buttonLightBrightness_60percent;
+						break;
+					case buttonLightBrightness_60percent:
+						lights_setBrightness(lights_MaxBrightness / 100 * 45);
+						buttonLightBrightness = buttonLightBrightness_45percent;
+						break;
+					case buttonLightBrightness_45percent:
+						lights_setBrightness(lights_MaxBrightness / 100 * 37);
+						buttonLightBrightness = buttonLightBrightness_37percent;
+						break;
+					case buttonLightBrightness_37percent:
 						lights_setBrightness(0);
-						lightOn = false;
+						buttonLightBrightness = buttonLightBrightness_off;
+						break;
+					case buttonLightBrightness_off:
+					default:
+						lights_setBrightness(lights_MaxBrightness);
+						buttonLightBrightness = buttonLightBrightness_full;
+						break;
 					}
 				}
 			}
