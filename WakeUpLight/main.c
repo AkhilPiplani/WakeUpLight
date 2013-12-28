@@ -341,7 +341,7 @@ int main(void) {
 			if(AlarmState == off) {
 				printf("alarm starting \n\r");
 				AlarmState = lightsOn;
-				AlarmLightBrightness = 1;
+				AlarmLightBrightness = lights_MaxBrightness / 16;
 				lights_setBrightness(AlarmLightBrightness);
 			}
 			else if(AlarmState == snoozed) {
