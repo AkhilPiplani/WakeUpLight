@@ -163,13 +163,15 @@ static void initSystem() {
 	ROM_IntMasterEnable();
 }
 
-#define ALARM_TIMEOUT_SECONDS		600
+#define ALARM_SOUND_TIMEOUT_SECONDS		600
+#define ALARM_LIGHT_TIMEOUT_SECONDS		1800
 
 typedef enum _AlarmStatus {
 	AlarmStatus_off = 0,
 	AlarmStatus_snoozed,
 	AlarmStatus_lightsOn,
-	AlarmStatus_playingSound
+	AlarmStatus_playingSound,
+	AlarmStatus_soundTimedOut,
 } AlarmStatus;
 
 // The brightness levels are not linear with lights-delays.
@@ -239,7 +241,7 @@ int main(void) {
 	unsigned char alarmLightTimeToMax = 15; // in minutes
 	unsigned int offset, i;
 	unsigned long numberOfAlarms, echoCount = 0, lightBrightness;
-	Time alarms[7], alarmStartTime;
+	Time alarms[7], alarmSoundStartTime;
 	ButtonLightBrigthness buttonLightBrightness = buttonLightBrightness_off;
 
 	initSystem();
@@ -368,14 +370,19 @@ int main(void) {
 		// Start playing alarm-sound once lights reach full-brightness.
 		if(AlarmLightBrightness>=AlarmLightMaxBrightness && AlarmState==AlarmStatus_lightsOn) {
 			sound_play();
-			time_get(&alarmStartTime);
+			time_get(&alarmSoundStartTime);
 			AlarmState = AlarmStatus_playingSound;
 		}
 
 		// Don't play the alarm forever. If I don't wake-up after 10-minutes of alarm-sound, I'm not home.
 		time_get(&TempTime);
-		if((TempTime.rawTime - alarmStartTime.rawTime > ALARM_TIMEOUT_SECONDS) && AlarmState==AlarmStatus_playingSound) {
-			printf("Stopping alarm due to timeout\r\n");
+		if((TempTime.rawTime - alarmSoundStartTime.rawTime > ALARM_SOUND_TIMEOUT_SECONDS) && AlarmState==AlarmStatus_playingSound) {
+			printf("Stopping alarm sound due to timeout\r\n");
+			sound_stop();
+			//stopAlarm();
+		}
+		else if((TempTime.rawTime - alarmSoundStartTime.rawTime > ALARM_LIGHT_TIMEOUT_SECONDS) && AlarmState==AlarmStatus_soundTimedOut) {
+			printf("Stopping alarm completely due to timeout\r\n");
 			stopAlarm();
 		}
 
@@ -383,7 +390,8 @@ int main(void) {
 		// Still-pressed = alarm-off, else snooze.
 		// If the alarm is not active, use the button to toggle light on/off
 		if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
-			if(AlarmState != buttonLightBrightness_off) {
+
+			if(AlarmState != AlarmStatus_off) {
 				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 3);  // Each SysCtlDelay is about 3 clocks.
 				if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
 					printf("Stopping alarm due to button\r\n");
@@ -393,9 +401,11 @@ int main(void) {
 					snoozeAlarm();
 				}
 			}
+
 			else {
 				// Wait 1/10th of a second and poll again.
 				ROM_SysCtlDelay(ROM_SysCtlClockGet() / 30);  // Each SysCtlDelay is about 3 clocks.
+
 				if((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0) {
 					switch(buttonLightBrightness) {
 					case buttonLightBrightness_full:
@@ -426,7 +436,6 @@ int main(void) {
 			// Wait for the button to be released, otherwise the light will keep toggling.
 			while((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0);
 		}
-
 
 		time_printCurrent();
 
