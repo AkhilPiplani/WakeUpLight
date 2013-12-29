@@ -319,6 +319,7 @@ int main(void) {
 					offset += strlen(tempString) + 1;
 				}
 
+				time_printCurrent();
 				time_setAlarms(alarms, numberOfAlarms);
 				break;
 
@@ -379,7 +380,7 @@ int main(void) {
 		if((TempTime.rawTime - alarmSoundStartTime.rawTime > ALARM_SOUND_TIMEOUT_SECONDS) && AlarmState==AlarmStatus_playingSound) {
 			printf("Stopping alarm sound due to timeout\r\n");
 			sound_stop();
-			//stopAlarm();
+			AlarmState = AlarmStatus_soundTimedOut;
 		}
 		else if((TempTime.rawTime - alarmSoundStartTime.rawTime > ALARM_LIGHT_TIMEOUT_SECONDS) && AlarmState==AlarmStatus_soundTimedOut) {
 			printf("Stopping alarm completely due to timeout\r\n");
@@ -437,7 +438,7 @@ int main(void) {
 			while((buttons_poll() & BUTTONS_SNOOZE__LIGHT_TOGGLE_PIN) != 0);
 		}
 
-		time_printCurrent();
+		//time_printCurrent();
 
 	}
 
