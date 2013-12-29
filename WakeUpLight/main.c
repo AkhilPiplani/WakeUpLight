@@ -359,12 +359,6 @@ int main(void) {
 			else if(AlarmState == AlarmStatus_snoozed) {
 				printf("alarm resuming from snooze \r\n");
 				AlarmState = AlarmStatus_lightsOn;
-				// TODO: Choose what to do if user snoozed when the sound wasn't playing:
-				// Go to full-brightness and alarm-sound straight away or continue with gradual wake-up?
-				//AlarmLightBrightness = AlarmLightMaxBrightness;
-				//lights_setBrightness(AlarmLightBrightness);
-				//sound_play();
-				//AlarmState = playingSound;
 			}
 		}
 

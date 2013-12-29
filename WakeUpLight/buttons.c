@@ -110,7 +110,7 @@ void buttons_poll() {
 			// Set the i'th row low
 			ROM_GPIOPinWrite(BUTTONS_PORT, BUTTONS_ROW_PINS, (BUTTONS_ROW_PINS & ~(RowPins[i])));
 
-			// TODO: Is there need for this delay to let the pin settle?
+			// Is there need for this delay to let the pin settle?
 			//ROM_SysCtlDelay(10);
 
 			scanColumnsState = ROM_GPIOPinRead(BUTTONS_PORT, BUTTONS_COLUMN_PINS);
