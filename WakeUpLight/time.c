@@ -33,6 +33,24 @@ static tBoolean SnoozeAlarmSet = false;
 
 void time_init() {
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_HIBERNATE);
+
+	if(ROM_HibernateIsActive() == 0) {
+		// OSCDRV bit needs to be set to set high drive strength as the launchpad board has
+		// capacitors on the XOSC crystal. This can't be set after clock is enabled so I can't
+		// use driverlib functions here.
+		HWREG(HIB_CTL) |= HIB_CTL_CLK32EN | HIB_CTL_OSCDRV;
+
+		// Wait the required 1500ms for the crystal oscillator to stabilize.
+		ROM_SysCtlDelay(ROM_SysCtlClockGet() / 2);
+
+		// Now set back the default values of the hibernate registers which can get corrupted according to Errata 3.1.
+		ROM_HibernateRTCSet(0);
+		HibernateRTCMatch0Set(0xFFFFFFFF);
+		HibernateRTCSSMatch0Set(0);
+		ROM_HibernateRTCTrimSet(0x7FFF); // This one not being set to default is the culprit of 1% RTC drift.
+		ROM_HibernateIntDisable(HIBERNATE_INT_PIN_WAKE | HIBERNATE_INT_LOW_BAT | HIBERNATE_INT_RTC_MATCH_0 | HIBERNATE_INT_WR_COMPLETE);
+	}
+
 	ROM_HibernateEnableExpClk(ROM_SysCtlClockGet());
 	ROM_HibernateClockSelect(HIBERNATE_CLOCK_SEL_RAW);
 	ROM_HibernateRTCSet(0);
