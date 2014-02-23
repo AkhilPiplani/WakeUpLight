@@ -240,7 +240,7 @@ int main(void) {
 	unsigned char tempUchar;
 	unsigned char alarmLightTimeToMax = 15; // in minutes
 	unsigned int offset, i;
-	unsigned long numberOfAlarms, echoCount = 0, lightBrightness;
+	unsigned long numberOfAlarms, echoCount = 0, lightBrightness, tempUlong;
 	Time alarms[7], alarmSoundStartTime;
 	ButtonLightBrigthness buttonLightBrightness = buttonLightBrightness_off;
 
@@ -342,6 +342,23 @@ int main(void) {
 
 			case 'U': // I'm Up! Stop Alarm -- not used by Android App yet.
 				stopAlarm();
+				break;
+
+			case 'd': // demo mode.
+				lightBrightness = 1200 * 4;
+				while(lightBrightness < lights_MaxBrightness) {
+					ROM_SysCtlDelay(ROM_SysCtlClockGet()/64);
+					lights_setBrightness(lightBrightness);
+					lightBrightness += 1200;
+				}
+				
+				while(lightBrightness > 0) {
+					ROM_SysCtlDelay(ROM_SysCtlClockGet()/128);
+					lights_setBrightness(lightBrightness);
+					lightBrightness -= 1200;
+				}
+				
+				lights_setBrightness(0);
 				break;
 
 			default:

@@ -79,7 +79,7 @@ void time_get(Time *time) {
 		rawTime = ROM_HibernateRTCGet();
 	}
 
-	time->rawTime = rawTime;
+	time->rawTime = rawTime % SECONDS_IN_A_WEEK;
 
 	time->second = rawTime % 60;
 	rawTime /= 60;
