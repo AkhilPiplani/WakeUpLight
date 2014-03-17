@@ -28,18 +28,15 @@
 #include "lights.h"
 #include "sound.h"
 
-// Alarm-Sound
-// PF2(T1CCP0)/PF3(T1CCP1) can be used as 16-bit PWM for Alarm-Sound(PWM). It's in use for the RGB-LED for the Blue/Green channel. Maybe R11/R12 needs to be removed to use it properly.
-// PD2 (WT3CCP0) can also be used as 32-bit timer PWM.
-// PB2 and PB3 are T3CCP0, T3CCP1 and can be used as 16/32 bit timer PWM.
-
-// Button Pins: PA2-PA6
-// Dimmer(lights) Pins: PE1-2
-// LCD Pins: PB0,1,4-7
+// Dimmer(lights) Pins: PE1(0 crossing input), PE2(dimmer control output)
 // UART(2) Pins: PD6-7 (PD6=U2Rx, PD7=U2Tx) -- used for UART to Bluetooth converter
-// PB2 is used for sound using T3CCP0 for PWM.
-// PC6 is used for sound amplifier power-enable / shutdown.
-// PC7 is used for the snooze button.
+// PB2 is used as output for sound using T3CCP0 for PWM.
+// PC6 is used as output for sound amplifier power-enable / shutdown.
+// PC7 is used as input for the snooze button.
+//
+// Pins that were previously used for a UI system based on buttons and an LCD but are NOT used anymore:
+// LCD Pins: PB0,1,4-7
+// Buttons: PA2-6
 
 #define ENABLE_TESTS			0
 // Enable only one of the below
